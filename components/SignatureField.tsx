@@ -23,8 +23,8 @@ const SignatureField: React.FC<SignatureFieldProps> = ({
 }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
-  const [currentWidth, setCurrentWidth] = useState(width);
-  const [currentHeight, setCurrentHeight] = useState(height);
+  //   const [currentWidth, setCurrentWidth] = useState(width);
+  //   const [currentHeight, setCurrentHeight] = useState(height);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     setIsDragging(true);
@@ -51,8 +51,8 @@ const SignatureField: React.FC<SignatureFieldProps> = ({
     const newHeight =
       height + (e.clientY - y * zoomLevel - height * zoomLevel) / zoomLevel;
     onResize(id, newWidth, newHeight);
-    setCurrentWidth(newWidth);
-    setCurrentHeight(newHeight);
+    // setCurrentWidth(newWidth);
+    // setCurrentHeight(newHeight);
   };
 
   return (
