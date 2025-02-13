@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import * as pdfjsLib from "pdfjs-dist";
-import PdfThumbnail from "./PdfThumbnail";import SignatureField from "./SignatureField";
+import PdfThumbnail from "./PdfThumbnail";
+import SignatureField from "./SignatureField";
 import FieldPalette from "./FieldPalette";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = `/pdfjs-dist/pdf.worker.mjs`;
@@ -153,23 +154,23 @@ const PdfViewer: React.FC<PdfViewerProps> = ({ pdfUrl }) => {
   };
 
   // Function to convert the PDF to base64
-  const pdfToBase64 = async (): Promise<string | null> => {
-    if (!pdfUrl) return null;
+  // const pdfToBase64 = async (): Promise<string | null> => {
+  //   if (!pdfUrl) return null;
 
-    try {
-      const response = await fetch(pdfUrl);
-      const blob = await response.blob();
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
-      });
-    } catch (error) {
-      console.error("Error converting PDF to base64:", error);
-      return null;
-    }
-  };
+  //   try {
+  //     const response = await fetch(pdfUrl);
+  //     const blob = await response.blob();
+  //     return new Promise((resolve, reject) => {
+  //       const reader = new FileReader();
+  //       reader.onloadend = () => resolve(reader.result as string);
+  //       reader.onerror = reject;
+  //       reader.readAsDataURL(blob);
+  //     });
+  //   } catch (error) {
+  //     console.error("Error converting PDF to base64:", error);
+  //     return null;
+  //   }
+  // };
 
   const handleSave = () => {
     const dataToSend = {
