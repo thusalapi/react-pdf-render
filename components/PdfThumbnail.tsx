@@ -4,11 +4,13 @@ import * as pdfjsLib from "pdfjs-dist";
 interface PdfThumbnailsProps {
   pdfDocument: pdfjsLib.PDFDocumentProxy | null;
   onThumbnailClick: (pageNumber: number) => void;
+  currentPage: number;
 }
 
 const PdfThumbnail: React.FC<PdfThumbnailsProps> = ({
   pdfDocument,
   onThumbnailClick,
+  currentPage,
 }) => {
   const [pageThumbnails, setPageThumbnails] = useState<string[]>([]);
 
@@ -42,11 +44,20 @@ const PdfThumbnail: React.FC<PdfThumbnailsProps> = ({
       <h3>Document Pages</h3>
       <ul>
         {pageThumbnails.map((thumbnail, index) => (
-          <li key={index} onClick={() => onThumbnailClick(index + 1)}>
+          <li
+            key={index}
+            onClick={() => onThumbnailClick(index + 1)}
+            style={{
+              cursor: "pointer",
+              backgroundColor: currentPage === index + 1 ? "#f0f0f0" : "white",
+              padding: "5px",
+              borderBottom: "1px solid #eee",
+            }}
+          >
             <img
               src={thumbnail}
               alt={`Page ${index + 1}`}
-              style={{ width: "100%", cursor: "pointer" }}
+              style={{ width: "100%" }}
             />
           </li>
         ))}
