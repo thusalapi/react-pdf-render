@@ -469,7 +469,9 @@ const PdfViewer: React.FC<PdfViewerProps> = ({ pdfUrl }) => {
               Array.from({ length: numPages }, (_, index) => (
                 <div
                   key={index}
-                  ref={(el) => (pageRefs.current[index] = el)}
+                  ref={(el) => {
+                    pageRefs.current[index] = el;
+                  }}
                   style={{ position: "relative", marginBottom: "50px" }}
                 >
                   <canvas
@@ -478,7 +480,6 @@ const PdfViewer: React.FC<PdfViewerProps> = ({ pdfUrl }) => {
                     }}
                     style={{ border: "1px solid #000" }}
                   />
-
                   {signatureFields
                     .filter((field) => field.page === index + 1)
                     .map((field) => (
