@@ -41,7 +41,7 @@ const PdfThumbnail: React.FC<PdfThumbnailsProps> = ({
 
   return (
     <aside style={{ width: "200px", borderRight: "1px solid #ccc" }}>
-      <h3>Document Pages</h3>
+      <h3>Pages</h3>
       <ul>
         {pageThumbnails.map((thumbnail, index) => (
           <li
@@ -52,6 +52,7 @@ const PdfThumbnail: React.FC<PdfThumbnailsProps> = ({
               backgroundColor: currentPage === index + 1 ? "#f0f0f0" : "white",
               padding: "5px",
               borderBottom: "1px solid #eee",
+              position: "relative",
             }}
           >
             <img
@@ -59,6 +60,19 @@ const PdfThumbnail: React.FC<PdfThumbnailsProps> = ({
               alt={`Page ${index + 1}`}
               style={{ width: "100%" }}
             />
+            <div
+              style={{
+                position: "absolute",
+                bottom: "5px",
+                left: "5px",
+                backgroundColor: "rgba(255, 255, 255, 0.7)",
+                padding: "2px 5px",
+                borderRadius: "3px",
+                fontSize: "12px",
+              }}
+            >
+              Page {index + 1}
+            </div>
           </li>
         ))}
       </ul>
