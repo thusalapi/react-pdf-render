@@ -1,4 +1,3 @@
-// FieldPalette.tsx
 import React from "react";
 import SignatureField from "./SignatureField";
 
@@ -7,8 +6,12 @@ interface FieldPaletteProps {
 }
 
 const FieldPalette: React.FC<FieldPaletteProps> = ({ onFieldSelected }) => {
-  const handleDragStart = (e: React.DragEvent, fieldType: "signature" | "stamp") => {
+  const handleDragStart = (
+    e: React.DragEvent,
+    fieldType: "signature" | "stamp"
+  ) => {
     e.dataTransfer.setData("fieldType", fieldType);
+    onFieldSelected(fieldType);
   };
 
   return (
