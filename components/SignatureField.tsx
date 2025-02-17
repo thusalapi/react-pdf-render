@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useRef, useEffect } from "react";
 import { useDrag } from "react-dnd";
 
 interface SignatureFieldProps {
@@ -7,6 +7,7 @@ interface SignatureFieldProps {
 }
 
 const SignatureField: React.FC<SignatureFieldProps> = ({ id, fieldType }) => {
+  const ref = useRef<HTMLDivElement>(null);
   const [{ isDragging }, drag] = useDrag({
     type: "SIGNATURE",
     item: { id: id, type: "SIGNATURE", fieldType: fieldType },
@@ -15,10 +16,15 @@ const SignatureField: React.FC<SignatureFieldProps> = ({ id, fieldType }) => {
     }),
   });
 
+  useEffect(() => {
+    if (ref.current) {
+      drag(ref.current);
+    }
+  }, [drag]);
+
   return (
     <div
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      ref={drag}
+      ref={ref}
       style={{
         opacity: isDragging ? 0.5 : 1,
         fontWeight: "bold",
