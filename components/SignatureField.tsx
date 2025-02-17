@@ -17,6 +17,7 @@ const SignatureField: React.FC<SignatureFieldProps> = ({ id, fieldType }) => {
 
   return (
     <div
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       ref={drag}
       style={{
         opacity: isDragging ? 0.5 : 1,
