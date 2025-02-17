@@ -25,6 +25,36 @@ interface DraggedField {
   fieldType: "signature" | "stamp" | null;
 }
 
+// const isFieldOverlappingPageBoundary = (
+//   y: number,
+//   pageHeight: number,
+//   fieldHeight: number
+// ): boolean => {
+//   return y + fieldHeight > pageHeight || y < 0;
+// };
+
+const getAdjustedPageAndPosition = (
+  y: number,
+  pageNumber: number,
+  pageHeight: number,
+  fieldHeight: number,
+  totalPages: number
+): { page: number; y: number } => {
+  if (y + fieldHeight > pageHeight) {
+    if (pageNumber < totalPages) {
+      return { page: pageNumber + 1, y: 0 };
+    }
+    return { page: pageNumber, y: pageHeight - fieldHeight };
+  }
+  if (y < 0) {
+    if (pageNumber > 1) {
+      return { page: pageNumber - 1, y: pageHeight - fieldHeight };
+    }
+    return { page: pageNumber, y: 0 };
+  }
+  return { page: pageNumber, y };
+};
+
 const PdfViewer: React.FC<PdfViewerProps> = ({ pdfUrl }) => {
   const [pdfDocument, setPdfDocument] =
     useState<pdfjsLib.PDFDocumentProxy | null>(null);
@@ -308,6 +338,37 @@ const PdfViewer: React.FC<PdfViewerProps> = ({ pdfUrl }) => {
   //   return null;
   // };
 
+  const handleFieldPaletteClick = async (fieldType: "signature" | "stamp") => {
+    if (!pdfDocument || currentPage > pdfDocument.numPages) return;
+
+    const pdfPage = await pdfDocument.getPage(currentPage);
+    const viewport = pdfPage.getViewport({ scale: zoomLevel });
+    const pageWidth = viewport.width / zoomLevel;
+    const pageHeight = viewport.height / zoomLevel;
+
+    // Default field dimensions
+    const fieldWidth = 100;
+    const fieldHeight = 30;
+
+    // Calculate center position
+    const centerX = (pageWidth - fieldWidth) / 2;
+    const centerY = (pageHeight - fieldHeight) / 2;
+
+    const newSignatureField: SignatureFieldData = {
+      id: signatureIdCounter,
+      page: currentPage,
+      x: centerX,
+      y: centerY,
+      width: fieldWidth,
+      height: fieldHeight,
+      fieldType: fieldType,
+      fieldStatus: "pending",
+    };
+
+    setSignatureFields((prevFields) => [...prevFields, newSignatureField]);
+    setSignatureIdCounter((prev) => prev + 1);
+  };
+
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
   };
@@ -339,37 +400,65 @@ const PdfViewer: React.FC<PdfViewerProps> = ({ pdfUrl }) => {
     return null;
   };
 
-  const handleDrop = (e: React.DragEvent) => {
+  const handleDrop = async (e: React.DragEvent) => {
     e.preventDefault();
     const pageInfo = getPageFromY(e.clientY);
-    if (!pageInfo || !scrollContainerRef.current) return;
+    if (!pageInfo || !scrollContainerRef.current || !pdfDocument) return;
 
     const { page, pageTop } = pageInfo;
     const containerRect = scrollContainerRef.current.getBoundingClientRect();
     const scrollTop = scrollContainerRef.current.scrollTop;
 
-    const relativeX = (e.clientX - containerRect.left) / zoomLevel;
+    // Get current page dimensions
+    const pdfPage = await pdfDocument.getPage(page);
+    const viewport = pdfPage.getViewport({ scale: zoomLevel });
+    const pageHeight = viewport.height / zoomLevel;
+
+    // Calculate centered position
+    const fieldWidth = 100;
+    const fieldHeight = 30;
+    const relativeX =
+      (e.clientX - containerRect.left) / zoomLevel - fieldWidth / 2;
     const relativeY =
-      (e.clientY - containerRect.top + scrollTop - pageTop) / zoomLevel;
+      (e.clientY - containerRect.top + scrollTop - pageTop) / zoomLevel -
+      fieldHeight / 2;
+
+    // Check and adjust position if near page boundaries
+    const adjustedPosition = getAdjustedPageAndPosition(
+      relativeY,
+      page,
+      pageHeight,
+      fieldHeight,
+      pdfDocument.numPages
+    );
 
     if (draggedField.isExisting && draggedField.fieldId !== null) {
-      // Update existing field position
       setSignatureFields((prevFields) =>
         prevFields.map((field) =>
           field.id === draggedField.fieldId
-            ? { ...field, page, x: relativeX, y: relativeY }
+            ? {
+                ...field,
+                page: adjustedPosition.page,
+                x: Math.max(
+                  0,
+                  Math.min(relativeX, viewport.width / zoomLevel - fieldWidth)
+                ),
+                y: adjustedPosition.y,
+              }
             : field
         )
       );
     } else if (draggedField.fieldType) {
-      // Create new field
       const newSignatureField: SignatureFieldData = {
         id: signatureIdCounter,
-        page,
-        x: relativeX,
-        y: relativeY,
-        width: 100,
-        height: 30,
+        page: adjustedPosition.page,
+        x: Math.max(
+          0,
+          Math.min(relativeX, viewport.width / zoomLevel - fieldWidth)
+        ),
+        y: adjustedPosition.y,
+        width: fieldWidth,
+        height: fieldHeight,
         fieldType: draggedField.fieldType,
         fieldStatus: "pending",
       };
@@ -378,7 +467,6 @@ const PdfViewer: React.FC<PdfViewerProps> = ({ pdfUrl }) => {
       setSignatureIdCounter((prev) => prev + 1);
     }
 
-    // Reset dragged field state
     setDraggedField({ fieldId: null, isExisting: false, fieldType: null });
   };
 
@@ -654,6 +742,8 @@ const PdfViewer: React.FC<PdfViewerProps> = ({ pdfUrl }) => {
                           cursor: "move",
                           userSelect: "none",
                           zIndex: 1000,
+                          transition: "all 0.2s ease-in-out",
+                          transform: `translate(0, 0)`,
                         }}
                       >
                         <div
