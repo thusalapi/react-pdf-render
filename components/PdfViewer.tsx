@@ -2,8 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import * as pdfjsLib from "pdfjs-dist";
 import PdfThumbnail from "./PdfThumbnail";
 import FieldPalette from "./FieldPalette";
-import { useDrop } from "react-dnd";
-
+import { Trash2 } from "lucide-react";
 pdfjsLib.GlobalWorkerOptions.workerSrc = `/pdfjs-dist/pdf.worker.mjs`;
 
 interface PdfViewerProps {
@@ -22,23 +21,18 @@ interface SignatureFieldData {
 }
 
 const PdfViewer: React.FC<PdfViewerProps> = ({ pdfUrl }) => {
-  const [pdfDocument, setPdfDocument] =
-    useState<pdfjsLib.PDFDocumentProxy | null>(null);
+  const [pdfDocument, setPdfDocument] = useState<pdfjsLib.PDFDocumentProxy | null>(null);
   const [numPages, setNumPages] = useState<number | null>(null);
   const [zoomLevel, setZoomLevel] = useState<number>(1.5);
   const canvasRefs = useRef<(HTMLCanvasElement | null)[]>([]);
   const renderingTasks = useRef<(pdfjsLib.RenderTask | null)[]>([]);
   const [currentPage, setCurrentPage] = useState<number>(1);
-  const [signatureFields, setSignatureFields] = useState<SignatureFieldData[]>(
-    []
-  );
+  const [signatureFields, setSignatureFields] = useState<SignatureFieldData[]>([]);
   const [signatureIdCounter, setSignatureIdCounter] = useState<number>(0);
-  const [selectedFieldType, setSelectedFieldType] = useState<
-    "signature" | "stamp" | null
-  >(null);
-
+  const [selectedFieldType, setSelectedFieldType] = useState<"signature" | "stamp" | null>(null);
+  const [isDraggingExistingField, setIsDraggingExistingField] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-
+  const pageRefs = useRef<(HTMLDivElement | null)[]>([]);
   const renderPage = async (pageNumber: number, scale: number) => {
     if (!pdfDocument || !canvasRefs.current[pageNumber - 1]) return;
 
@@ -142,48 +136,6 @@ const PdfViewer: React.FC<PdfViewerProps> = ({ pdfUrl }) => {
     setSignatureIdCounter(signatureIdCounter + 1); // Increment counter
     setSelectedFieldType(null); // Deselect the field type after placing
   };
-  const [, drop] = useDrop({
-    accept: "SIGNATURE",
-    drop: (item: any, monitor) => {
-      const canvas = canvasRefs.current[currentPage - 1];
-      if (!canvas) return;
-
-      const rect = canvas.getBoundingClientRect();
-      const offset = monitor.getClientOffset();
-
-      if (!offset) return;
-
-      const x = offset.x - rect.left; // Mouse X relative to canvas
-      const y = offset.y - rect.top; // Mouse Y relative to canvas
-
-      pdfDocument?.getPage(currentPage).then((page) => {
-        const viewport = page.getViewport({ scale: zoomLevel });
-
-        // Convert canvas coordinates to PDF coordinates
-        const transform = viewport.transform;
-        const pdfX = transform[0] + (x - transform[4]) / transform[0];
-        const pdfY = transform[3] + (y - transform[5]) / transform[3];
-
-        setSignatureFields((prevFields) => [
-          ...prevFields,
-          {
-            id: signatureIdCounter,
-            page: currentPage,
-            x: pdfX,
-            y: pdfY,
-            width: 100,
-            height: 30,
-            fieldType: item.fieldType,
-            fieldStatus: "pending",
-          },
-        ]);
-        setSignatureIdCounter(signatureIdCounter + 1);
-      });
-    },
-    collect: (monitor) => ({
-      isOver: !!monitor.isOver(),
-    }),
-  });
 
   // const handleFieldDrag = (id: number, newX: number, newY: number) => {
   //   const updatedFields = signatureFields.map((field) =>
@@ -249,7 +201,354 @@ const PdfViewer: React.FC<PdfViewerProps> = ({ pdfUrl }) => {
     }
   }, [currentPage, pdfDocument, zoomLevel, scrollToPage]);
 
+  // const handleDragOver = (e: React.DragEvent) => {
+  //   e.preventDefault();
+  //   e.stopPropagation();
+  // };
+
+  // const getPageFromY = (clientY: number): { page: number; pageTop: number } | null => {
+  //   if (!scrollContainerRef.current) return null;
+
+  //   const containerRect = scrollContainerRef.current.getBoundingClientRect();
+  //   const scrollTop = scrollContainerRef.current.scrollTop;
+  //   const mouseY = clientY - containerRect.top + scrollTop;
+
+  //   for (let i = 0; i < pageRefs.current.length; i++) {
+  //     const pageElement = pageRefs.current[i];
+  //     if (!pageElement) continue;
+
+  //     const pageRect = pageElement.getBoundingClientRect();
+  //     const pageTop = pageElement.offsetTop;
+
+  //     if (mouseY >= pageTop && mouseY <= pageTop + pageRect.height) {
+  //       return {
+  //         page: i + 1,
+  //         pageTop: pageTop
+  //       };
+  //     }
+  //   }
+
+  //   return null;
+  // };
+
+  // const handleDrop = (e: React.DragEvent) => {
+  //   e.preventDefault();
+  //   e.stopPropagation();
+
+  //   const fieldType = e.dataTransfer.getData("fieldType") as "signature" | "stamp";
+  //   if (!fieldType || !scrollContainerRef.current) return;
+
+  //   const pageInfo = getPageFromY(e.clientY);
+  //   if (!pageInfo) return;
+
+  //   const { page, pageTop } = pageInfo;
+  //   const containerRect = scrollContainerRef.current.getBoundingClientRect();
+  //   const scrollTop = scrollContainerRef.current.scrollTop;
+
+  //   // Calculate position relative to the page
+  //   const relativeX = (e.clientX - containerRect.left) / zoomLevel;
+  //   const relativeY = ((e.clientY - containerRect.top + scrollTop - pageTop) / zoomLevel);
+
+  //   const newSignatureField: SignatureFieldData = {
+  //     id: signatureIdCounter,
+  //     page: page,
+  //     x: relativeX,
+  //     y: relativeY,
+  //     width: 100,
+  //     height: 30,
+  //     fieldType: fieldType,
+  //     fieldStatus: "pending",
+  //   };
+
+  //   setSignatureFields((prevFields) => [...prevFields, newSignatureField]);
+  //   setSignatureIdCounter((prev) => prev + 1);
+  // };
+
+  // const handleDragOver = (e: React.DragEvent) => {
+  //   e.preventDefault();
+  //   e.stopPropagation();
+  // };
+
+  // const getPageFromY = (
+  //   clientY: number
+  // ): { page: number; pageTop: number } | null => {
+  //   if (!scrollContainerRef.current) return null;
+
+  //   const containerRect = scrollContainerRef.current.getBoundingClientRect();
+  //   const scrollTop = scrollContainerRef.current.scrollTop;
+  //   const mouseY = clientY - containerRect.top + scrollTop;
+
+  //   for (let i = 0; i < pageRefs.current.length; i++) {
+  //     const pageElement = pageRefs.current[i];
+  //     if (!pageElement) continue;
+
+  //     const pageRect = pageElement.getBoundingClientRect();
+  //     const pageTop = pageElement.offsetTop;
+
+  //     if (mouseY >= pageTop && mouseY <= pageTop + pageRect.height) {
+  //       return {
+  //         page: i + 1,
+  //         pageTop: pageTop,
+  //       };
+  //     }
+  //   }
+
+  //   return null;
+  // };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const getPageFromY = (clientY: number): { page: number; pageTop: number } | null => {
+    if (!scrollContainerRef.current) return null;
+
+    const containerRect = scrollContainerRef.current.getBoundingClientRect();
+    const scrollTop = scrollContainerRef.current.scrollTop;
+    const mouseY = clientY - containerRect.top + scrollTop;
+
+    for (let i = 0; i < pageRefs.current.length; i++) {
+      const pageElement = pageRefs.current[i];
+      if (!pageElement) continue;
+
+      const pageRect = pageElement.getBoundingClientRect();
+      const pageTop = pageElement.offsetTop;
+      
+      if (mouseY >= pageTop && mouseY <= pageTop + pageRect.height) {
+        return {
+          page: i + 1,
+          pageTop: pageTop
+        };
+      }
+    }
+
+    return null;
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const pageInfo = getPageFromY(e.clientY);
+    if (!pageInfo || !scrollContainerRef.current) return;
+
+    const { page, pageTop } = pageInfo;
+    const containerRect = scrollContainerRef.current.getBoundingClientRect();
+    const scrollTop = scrollContainerRef.current.scrollTop;
+
+    // Calculate position relative to the page
+    const relativeX = (e.clientX - containerRect.left) / zoomLevel;
+    const relativeY = ((e.clientY - containerRect.top + scrollTop - pageTop) / zoomLevel);
+
+    if (isDraggingExistingField) {
+      // Get the field ID from transfer data
+      const fieldId = parseInt(e.dataTransfer.getData("fieldId"), 10);
+      if (!isNaN(fieldId)) {
+        setSignatureFields(prevFields =>
+          prevFields.map(field =>
+            field.id === fieldId
+              ? { ...field, page, x: relativeX, y: relativeY }
+              : field
+          )
+        );
+      }
+    } else {
+      // Handle new field drop
+      const fieldType = e.dataTransfer.getData("fieldType") as "signature" | "stamp";
+      if (!fieldType) return;
+
+      const newSignatureField: SignatureFieldData = {
+        id: signatureIdCounter,
+        page,
+        x: relativeX,
+        y: relativeY,
+        width: 100,
+        height: 30,
+        fieldType,
+        fieldStatus: "pending",
+      };
+
+      setSignatureFields(prevFields => [...prevFields, newSignatureField]);
+      setSignatureIdCounter(prev => prev + 1);
+    }
+
+    setIsDraggingExistingField(false);
+  };
+
+  const handleFieldDragStart = (e: React.DragEvent, field: SignatureFieldData) => {
+    setIsDraggingExistingField(true);
+    e.dataTransfer.setData("fieldId", field.id.toString());
+    e.dataTransfer.setData("fieldType", field.fieldType);
+    
+    // Create a ghost image for dragging
+    const ghostDiv = document.createElement("div");
+    ghostDiv.style.width = "100px";
+    ghostDiv.style.height = "30px";
+    ghostDiv.style.backgroundColor = "rgba(0, 0, 255, 0.2)";
+    document.body.appendChild(ghostDiv);
+    e.dataTransfer.setDragImage(ghostDiv, 50, 15);
+    setTimeout(() => document.body.removeChild(ghostDiv), 0);
+  };
+
+  const handleDeleteField = (fieldId: number) => {
+    setSignatureFields(prevFields => prevFields.filter(field => field.id !== fieldId));
+  };
+
   return (
+    // <div style={{ display: "flex", flexDirection: "row" }}>
+    //   <PdfThumbnail
+    //     pdfDocument={pdfDocument}
+    //     onThumbnailClick={handleThumbnailClick}
+    //     currentPage={currentPage}
+    //   />
+    //   <div>
+    //     <FieldPalette onFieldSelected={handleFieldSelected} />
+    //     <div
+    //       style={{
+    //         display: "flex",
+    //         flexDirection: "column",
+    //         flex: 1,
+    //       }}
+    //     >
+    //       <div
+    //         style={{
+    //           display: "flex",
+    //           justifyContent: "center",
+    //           marginBottom: "10px",
+    //         }}
+    //       >
+    //         <button onClick={handleZoomOut}>Zoom Out</button>
+    //         <button onClick={handleZoomIn}>Zoom In</button>
+    //       </div>
+    //       <div
+    //         style={{
+    //           position: "relative",
+    //           display: "flex",
+    //           flexDirection: "column",
+    //           overflowY: "scroll",
+    //           height: "80vh",
+    //           cursor: selectedFieldType ? "crosshair" : "default",
+    //         }}
+    //         ref={scrollContainerRef}
+    //         onClick={handleDocumentClick}
+    //       >
+    //         <div style={{ position: "relative" }}>
+    //           {numPages &&
+    //             Array.from({ length: numPages }, (_, index) => (
+    //               <canvas
+    //                 key={index}
+    //                 ref={(el) => {
+    //                   canvasRefs.current[index] = el;
+    //                 }}
+    //                 style={{ marginBottom: "50px", border: "1px solid #000" }}
+    //               />
+    //             ))}
+
+    //           {signatureFields
+    //             .filter((field) => field.page === currentPage)
+    //             .map((field) => (
+    //               <div
+    //                 key={field.id}
+    //                 style={{
+    //                   position: "absolute",
+    //                   left: field.x * zoomLevel,
+    //                   top: field.y * zoomLevel,
+    //                   border: "1px solid blue",
+    //                   width: "100px",
+    //                   height: "40px",
+    //                   pointerEvents: "none", // Make sure it doesn't interfere with canvas events
+    //                 }}
+    //               >
+    //                 {field.id}
+    //               </div>
+    //             ))}
+    //         </div>
+    //       </div>
+    //     </div>
+    //     <button onClick={handleSave}>Save</button>
+    //   </div>
+    // </div>
+
+    // <div style={{ display: "flex", flexDirection: "row" }}>
+    //   <PdfThumbnail
+    //     pdfDocument={pdfDocument}
+    //     onThumbnailClick={handleThumbnailClick}
+    //     currentPage={currentPage}
+    //   />
+    //   <div>
+    //     <FieldPalette onFieldSelected={handleFieldSelected} />
+    //     <div style={{ display: "flex", flexDirection: "column", flex: 1 }}>
+    //       <div
+    //         style={{
+    //           display: "flex",
+    //           justifyContent: "center",
+    //           marginBottom: "10px",
+    //         }}
+    //       >
+    //         <button onClick={handleZoomOut}>Zoom Out</button>
+    //         <button onClick={handleZoomIn}>Zoom In</button>
+    //       </div>
+    //       <div
+    //         style={{
+    //           position: "relative",
+    //           display: "flex",
+    //           flexDirection: "column",
+    //           overflowY: "scroll",
+    //           height: "80vh",
+    //         }}
+    //         ref={scrollContainerRef}
+    //         onDragOver={handleDragOver}
+    //         onDrop={handleDrop}
+    //       >
+    //         {numPages &&
+    //           Array.from({ length: numPages }, (_, index) => (
+    //             <div
+    //               key={index}
+    //               ref={(el) => (pageRefs.current[index] = el)}
+    //               style={{ position: "relative", marginBottom: "50px" }}
+    //             >
+    //               <canvas
+    //                 ref={(el) => {
+    //                   canvasRefs.current[index] = el;
+    //                 }}
+    //                 style={{ border: "1px solid #000" }}
+    //               />
+
+    //               {/* Render fields for this specific page */}
+    //               {signatureFields
+    //                 .filter((field) => field.page === index + 1)
+    //                 .map((field) => (
+    //                   <div
+    //                     key={field.id}
+    //                     style={{
+    //                       position: "absolute",
+    //                       left: field.x * zoomLevel,
+    //                       top: field.y * zoomLevel,
+    //                       border: "1px solid blue",
+    //                       width: field.width * zoomLevel,
+    //                       height: field.height * zoomLevel,
+    //                       backgroundColor: "rgba(0, 0, 255, 0.1)",
+    //                       display: "flex",
+    //                       alignItems: "center",
+    //                       justifyContent: "center",
+    //                       pointerEvents: "none",
+    //                     }}
+    //                   >
+    //                     {field.fieldType === "signature"
+    //                       ? "Signature"
+    //                       : "Stamp"}{" "}
+    //                     #{field.id}
+    //                   </div>
+    //                 ))}
+    //             </div>
+    //           ))}
+    //       </div>
+    //     </div>
+    //     <button onClick={handleSave}>Save</button>
+    //   </div>
+    // </div>
+
     <div style={{ display: "flex", flexDirection: "row" }}>
       <PdfThumbnail
         pdfDocument={pdfDocument}
@@ -258,20 +557,8 @@ const PdfViewer: React.FC<PdfViewerProps> = ({ pdfUrl }) => {
       />
       <div>
         <FieldPalette onFieldSelected={handleFieldSelected} />
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            flex: 1,
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "center",
-              marginBottom: "10px",
-            }}
-          >
+        <div style={{ display: "flex", flexDirection: "column", flex: 1 }}>
+          <div style={{ display: "flex", justifyContent: "center", marginBottom: "10px" }}>
             <button onClick={handleZoomOut}>Zoom Out</button>
             <button onClick={handleZoomIn}>Zoom In</button>
           </div>
@@ -282,42 +569,75 @@ const PdfViewer: React.FC<PdfViewerProps> = ({ pdfUrl }) => {
               flexDirection: "column",
               overflowY: "scroll",
               height: "80vh",
-              cursor: selectedFieldType ? "crosshair" : "default",
             }}
             ref={scrollContainerRef}
-            onClick={handleDocumentClick}
+            onDragOver={handleDragOver}
+            onDrop={handleDrop}
           >
-            <div ref={(node) => drop(node)} style={{ position: "relative" }}>
-              {numPages &&
-                Array.from({ length: numPages }, (_, index) => (
+            {numPages &&
+              Array.from({ length: numPages }, (_, index) => (
+                <div
+                  key={index}
+                  ref={(el) => (pageRefs.current[index] = el)}
+                  style={{ position: "relative", marginBottom: "50px" }}
+                >
                   <canvas
-                    key={index}
                     ref={(el) => {
                       canvasRefs.current[index] = el;
                     }}
-                    style={{ marginBottom: "50px", border: "1px solid #000" }}
+                    style={{ border: "1px solid #000" }}
                   />
-                ))}
-
-              {signatureFields
-                .filter((field) => field.page === currentPage)
-                .map((field) => (
-                  <div
-                    key={field.id}
-                    style={{
-                      position: "absolute",
-                      left: field.x * zoomLevel,
-                      top: field.y * zoomLevel,
-                      border: "1px solid blue",
-                      width: "100px",
-                      height: "40px",
-                      pointerEvents: "none", // Make sure it doesn't interfere with canvas events
-                    }}
-                  >
-                    {field.id}
-                  </div>
-                ))}
-            </div>
+                  
+                  {signatureFields
+                    .filter((field) => field.page === index + 1)
+                    .map((field) => (
+                      <div
+                        key={field.id}
+                        draggable
+                        onDragStart={(e) => handleFieldDragStart(e, field)}
+                        style={{
+                          position: "absolute",
+                          left: field.x * zoomLevel,
+                          top: field.y * zoomLevel,
+                          border: "1px solid blue",
+                          width: field.width * zoomLevel,
+                          height: field.height * zoomLevel,
+                          backgroundColor: "rgba(0, 0, 255, 0.1)",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          cursor: "move",
+                          userSelect: "none",
+                        }}
+                      >
+                        <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+                          {field.fieldType === "signature" ? "Signature" : "Stamp"} #{field.id}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteField(field.id);
+                            }}
+                            style={{
+                              position: "absolute",
+                              top: -15,
+                              right: -15,
+                              padding: "4px",
+                              background: "white",
+                              border: "1px solid red",
+                              borderRadius: "50%",
+                              cursor: "pointer",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                            }}
+                          >
+                            <Trash2 size={16} color="red" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              ))}
           </div>
         </div>
         <button onClick={handleSave}>Save</button>
