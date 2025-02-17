@@ -1,16 +1,15 @@
 import React from "react";
+import SignatureField from "./SignatureField";
 
 interface FieldPaletteProps {
-  onFieldSelected: (fieldType: "signature" | "stamp" | null) => void;
+  onFieldSelected: (fieldType: "signature" | "stamp" | null) => void; // optional
 }
 
 const FieldPalette: React.FC<FieldPaletteProps> = ({ onFieldSelected }) => {
   return (
-    <div style={{ border: "1px solid #ccc", padding: "10px", width: "200px" }}>
-      <h3>Add Field</h3>
-      <button onClick={() => onFieldSelected("signature")}>Signature</button>
-      <button onClick={() => onFieldSelected("stamp")}>Stamp</button>
-      <button onClick={() => onFieldSelected(null)}>Clear Selection</button>
+    <div style={{ marginBottom: "20px" }}>
+      <SignatureField id="signature-field" fieldType="signature" />
+      <SignatureField id="stamp-field" fieldType="stamp" />
     </div>
   );
 };

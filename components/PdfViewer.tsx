@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import * as pdfjsLib from "pdfjs-dist";
 import PdfThumbnail from "./PdfThumbnail";
-import SignatureField from "./SignatureField";
 import FieldPalette from "./FieldPalette";
+import { useDrop } from "react-dnd";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = `/pdfjs-dist/pdf.worker.mjs`;
 
@@ -17,6 +17,8 @@ interface SignatureFieldData {
   y: number;
   width: number;
   height: number;
+  fieldType: "signature" | "stamp";
+  fieldStatus: "completed" | "pending";
 }
 
 const PdfViewer: React.FC<PdfViewerProps> = ({ pdfUrl }) => {
@@ -30,10 +32,10 @@ const PdfViewer: React.FC<PdfViewerProps> = ({ pdfUrl }) => {
   const [signatureFields, setSignatureFields] = useState<SignatureFieldData[]>(
     []
   );
+  const [signatureIdCounter, setSignatureIdCounter] = useState<number>(0);
   const [selectedFieldType, setSelectedFieldType] = useState<
     "signature" | "stamp" | null
   >(null);
-  const [signatureIdCounter, setSignatureIdCounter] = useState<number>(0); // Initialize the counter
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -78,6 +80,14 @@ const PdfViewer: React.FC<PdfViewerProps> = ({ pdfUrl }) => {
     }
   };
 
+  const renderAllPages = useCallback(async () => {
+    if (!pdfDocument) return;
+
+    for (let i = 1; i <= pdfDocument.numPages; i++) {
+      await renderPage(i, zoomLevel);
+    }
+  }, [pdfDocument, zoomLevel]);
+
   const scrollToPage = useCallback(
     (pageNumber: number) => {
       if (scrollContainerRef.current && canvasRefs.current[pageNumber - 1]) {
@@ -118,59 +128,84 @@ const PdfViewer: React.FC<PdfViewerProps> = ({ pdfUrl }) => {
     const y = (e.clientY - containerRect.top) / zoomLevel;
 
     const newSignatureField: SignatureFieldData = {
-      id: signatureIdCounter, // Assign current counter value
+      id: signatureIdCounter,
       page: currentPage,
       x: x,
       y: y,
-      width: 100, // Initial width
-      height: 30, // Initial height
+      width: 100,
+      height: 30,
+      fieldType: "signature",
+      fieldStatus: "completed",
     };
 
     setSignatureFields([...signatureFields, newSignatureField]);
     setSignatureIdCounter(signatureIdCounter + 1); // Increment counter
     setSelectedFieldType(null); // Deselect the field type after placing
   };
+  const [, drop] = useDrop({
+    accept: "SIGNATURE",
+    drop: (item: any, monitor) => {
+      const canvas = canvasRefs.current[currentPage - 1];
+      if (!canvas) return;
 
-  const handleFieldDrag = (id: number, newX: number, newY: number) => {
-    const updatedFields = signatureFields.map((field) =>
-      field.id === id ? { ...field, x: newX, y: newY } : field
-    );
-    setSignatureFields(updatedFields);
-  };
+      const rect = canvas.getBoundingClientRect();
+      const offset = monitor.getClientOffset();
 
-  const handleFieldResize = (
-    id: number,
-    newWidth: number,
-    newHeight: number
-  ) => {
-    const updatedFields = signatureFields.map((field) =>
-      field.id === id ? { ...field, width: newWidth, height: newHeight } : field
-    );
-    setSignatureFields(updatedFields);
-  };
+      if (!offset) return;
+
+      const x = offset.x - rect.left; // Mouse X relative to canvas
+      const y = offset.y - rect.top; // Mouse Y relative to canvas
+
+      pdfDocument?.getPage(currentPage).then((page) => {
+        const viewport = page.getViewport({ scale: zoomLevel });
+
+        // Convert canvas coordinates to PDF coordinates
+        const transform = viewport.transform;
+        const pdfX = transform[0] + (x - transform[4]) / transform[0];
+        const pdfY = transform[3] + (y - transform[5]) / transform[3];
+
+        setSignatureFields((prevFields) => [
+          ...prevFields,
+          {
+            id: signatureIdCounter,
+            page: currentPage,
+            x: pdfX,
+            y: pdfY,
+            width: 100,
+            height: 30,
+            fieldType: item.fieldType,
+            fieldStatus: "pending",
+          },
+        ]);
+        setSignatureIdCounter(signatureIdCounter + 1);
+      });
+    },
+    collect: (monitor) => ({
+      isOver: !!monitor.isOver(),
+    }),
+  });
+
+  // const handleFieldDrag = (id: number, newX: number, newY: number) => {
+  //   const updatedFields = signatureFields.map((field) =>
+  //     field.id === id ? { ...field, x: newX, y: newY } : field
+  //   );
+  //   setSignatureFields(updatedFields);
+  // };
+
+  // const handleFieldResize = (
+  //   id: number,
+  //   newWidth: number,
+  //   newHeight: number
+  // ) => {
+  //   const updatedFields = signatureFields.map((field) =>
+  //     field.id === id ? { ...field, width: newWidth, height: newHeight } : field
+  //   );
+  //   setSignatureFields(updatedFields);
+  // };
 
   const handleFieldSelected = (fieldType: "signature" | "stamp" | null) => {
     setSelectedFieldType(fieldType);
   };
-
-  // Function to convert the PDF to base64
-  // const pdfToBase64 = async (): Promise<string | null> => {
-  //   if (!pdfUrl) return null;
-
-  //   try {
-  //     const response = await fetch(pdfUrl);
-  //     const blob = await response.blob();
-  //     return new Promise((resolve, reject) => {
-  //       const reader = new FileReader();
-  //       reader.onloadend = () => resolve(reader.result as string);
-  //       reader.onerror = reject;
-  //       reader.readAsDataURL(blob);
-  //     });
-  //   } catch (error) {
-  //     console.error("Error converting PDF to base64:", error);
-  //     return null;
-  //   }
-  // };
 
   const handleSave = () => {
     const dataToSend = {
@@ -189,11 +224,10 @@ const PdfViewer: React.FC<PdfViewerProps> = ({ pdfUrl }) => {
         const pdf = await loadingTask.promise;
         setPdfDocument(pdf);
         setNumPages(pdf.numPages);
-        setCurrentPage(1); // Reset to page 1 when a new PDF is loaded
 
-        if (pdf.numPages > 0) {
-          renderPage(1, zoomLevel); // Render first page after loading
-        }
+        // Create canvas references and render all pages
+        canvasRefs.current = Array.from({ length: pdf.numPages }, () => null);
+        await renderAllPages();
       } catch (error) {
         console.error("Error loading PDF:", error);
       }
@@ -210,7 +244,7 @@ const PdfViewer: React.FC<PdfViewerProps> = ({ pdfUrl }) => {
 
   useEffect(() => {
     if (pdfDocument) {
-      renderPage(currentPage, zoomLevel);
+      renderAllPages();
       scrollToPage(currentPage);
     }
   }, [currentPage, pdfDocument, zoomLevel, scrollToPage]);
@@ -243,41 +277,47 @@ const PdfViewer: React.FC<PdfViewerProps> = ({ pdfUrl }) => {
           </div>
           <div
             style={{
-              position: "relative", // Make this a positioning context
+              position: "relative",
               display: "flex",
               flexDirection: "column",
               overflowY: "scroll",
               height: "80vh",
               cursor: selectedFieldType ? "crosshair" : "default",
             }}
-            ref={scrollContainerRef} // Attach ref here
+            ref={scrollContainerRef}
             onClick={handleDocumentClick}
           >
-            {numPages &&
-              Array.from({ length: numPages }, (_, index) => (
-                <canvas
-                  key={index}
-                  ref={(el) => {
-                    canvasRefs.current[index] = el;
-                  }}
-                  style={{ marginBottom: "10px" }}
-                />
-              ))}
-            {signatureFields
-              .filter((field) => field.page === currentPage)
-              .map((field) => (
-                <SignatureField
-                  key={field.id}
-                  id={field.id}
-                  x={field.x}
-                  y={field.y}
-                  width={field.width}
-                  height={field.height}
-                  onDrag={handleFieldDrag}
-                  onResize={handleFieldResize}
-                  zoomLevel={zoomLevel}
-                />
-              ))}
+            <div ref={(node) => drop(node)} style={{ position: "relative" }}>
+              {numPages &&
+                Array.from({ length: numPages }, (_, index) => (
+                  <canvas
+                    key={index}
+                    ref={(el) => {
+                      canvasRefs.current[index] = el;
+                    }}
+                    style={{ marginBottom: "50px", border: "1px solid #000" }}
+                  />
+                ))}
+
+              {signatureFields
+                .filter((field) => field.page === currentPage)
+                .map((field) => (
+                  <div
+                    key={field.id}
+                    style={{
+                      position: "absolute",
+                      left: field.x * zoomLevel,
+                      top: field.y * zoomLevel,
+                      border: "1px solid blue",
+                      width: "100px",
+                      height: "40px",
+                      pointerEvents: "none", // Make sure it doesn't interfere with canvas events
+                    }}
+                  >
+                    {field.id}
+                  </div>
+                ))}
+            </div>
           </div>
         </div>
         <button onClick={handleSave}>Save</button>
