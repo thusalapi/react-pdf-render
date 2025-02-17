@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import * as pdfjsLib from "pdfjs-dist";
 import PdfThumbnail from "./PdfThumbnail";
-import FieldPalette from "./FieldPalette";
 import { Trash2 } from "lucide-react";
 pdfjsLib.GlobalWorkerOptions.workerSrc = `/pdfjs-dist/pdf.worker.mjs`;
 
@@ -27,18 +26,21 @@ interface DraggedField {
 }
 
 const PdfViewer: React.FC<PdfViewerProps> = ({ pdfUrl }) => {
-  const [pdfDocument, setPdfDocument] = useState<pdfjsLib.PDFDocumentProxy | null>(null);
+  const [pdfDocument, setPdfDocument] =
+    useState<pdfjsLib.PDFDocumentProxy | null>(null);
   const [numPages, setNumPages] = useState<number | null>(null);
   const [zoomLevel, setZoomLevel] = useState<number>(1.5);
   const canvasRefs = useRef<(HTMLCanvasElement | null)[]>([]);
   const renderingTasks = useRef<(pdfjsLib.RenderTask | null)[]>([]);
   const [currentPage, setCurrentPage] = useState<number>(1);
-  const [signatureFields, setSignatureFields] = useState<SignatureFieldData[]>([]);
+  const [signatureFields, setSignatureFields] = useState<SignatureFieldData[]>(
+    []
+  );
   const [signatureIdCounter, setSignatureIdCounter] = useState<number>(0);
   const [draggedField, setDraggedField] = useState<DraggedField>({
     fieldId: null,
     isExisting: false,
-    fieldType: null
+    fieldType: null,
   });
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const pageRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -123,29 +125,29 @@ const PdfViewer: React.FC<PdfViewerProps> = ({ pdfUrl }) => {
     setZoomLevel((prevZoomLevel) => Math.max(prevZoomLevel - 0.5, 0.5));
   };
 
-  const handleDocumentClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!selectedFieldType || !pdfDocument || !scrollContainerRef.current)
-      return;
+  // const handleDocumentClick = (e: React.MouseEvent<HTMLDivElement>) => {
+  //   if (!selectedFieldType || !pdfDocument || !scrollContainerRef.current)
+  //     return;
 
-    const containerRect = scrollContainerRef.current.getBoundingClientRect();
-    const x = (e.clientX - containerRect.left) / zoomLevel;
-    const y = (e.clientY - containerRect.top) / zoomLevel;
+  //   const containerRect = scrollContainerRef.current.getBoundingClientRect();
+  //   const x = (e.clientX - containerRect.left) / zoomLevel;
+  //   const y = (e.clientY - containerRect.top) / zoomLevel;
 
-    const newSignatureField: SignatureFieldData = {
-      id: signatureIdCounter,
-      page: currentPage,
-      x: x,
-      y: y,
-      width: 100,
-      height: 30,
-      fieldType: "signature",
-      fieldStatus: "completed",
-    };
+  //   const newSignatureField: SignatureFieldData = {
+  //     id: signatureIdCounter,
+  //     page: currentPage,
+  //     x: x,
+  //     y: y,
+  //     width: 100,
+  //     height: 30,
+  //     fieldType: "signature",
+  //     fieldStatus: "completed",
+  //   };
 
-    setSignatureFields([...signatureFields, newSignatureField]);
-    setSignatureIdCounter(signatureIdCounter + 1); // Increment counter
-    setSelectedFieldType(null); // Deselect the field type after placing
-  };
+  //   setSignatureFields([...signatureFields, newSignatureField]);
+  //   setSignatureIdCounter(signatureIdCounter + 1); // Increment counter
+  //   setSelectedFieldType(null); // Deselect the field type after placing
+  // };
 
   // const handleFieldDrag = (id: number, newX: number, newY: number) => {
   //   const updatedFields = signatureFields.map((field) =>
@@ -165,9 +167,9 @@ const PdfViewer: React.FC<PdfViewerProps> = ({ pdfUrl }) => {
   //   setSignatureFields(updatedFields);
   // };
 
-  const handleFieldSelected = (fieldType: "signature" | "stamp" | null) => {
-    setSelectedFieldType(fieldType);
-  };
+  // const handleFieldSelected = (fieldType: "signature" | "stamp" | null) => {
+  //   setSelectedFieldType(fieldType);
+  // };
 
   const handleSave = () => {
     const dataToSend = {
@@ -310,7 +312,9 @@ const PdfViewer: React.FC<PdfViewerProps> = ({ pdfUrl }) => {
     e.preventDefault();
   };
 
-  const getPageFromY = (clientY: number): { page: number; pageTop: number } | null => {
+  const getPageFromY = (
+    clientY: number
+  ): { page: number; pageTop: number } | null => {
     if (!scrollContainerRef.current) return null;
 
     const containerRect = scrollContainerRef.current.getBoundingClientRect();
@@ -323,11 +327,11 @@ const PdfViewer: React.FC<PdfViewerProps> = ({ pdfUrl }) => {
 
       const pageRect = pageElement.getBoundingClientRect();
       const pageTop = pageElement.offsetTop;
-      
+
       if (mouseY >= pageTop && mouseY <= pageTop + pageRect.height) {
         return {
           page: i + 1,
-          pageTop: pageTop
+          pageTop: pageTop,
         };
       }
     }
@@ -345,12 +349,13 @@ const PdfViewer: React.FC<PdfViewerProps> = ({ pdfUrl }) => {
     const scrollTop = scrollContainerRef.current.scrollTop;
 
     const relativeX = (e.clientX - containerRect.left) / zoomLevel;
-    const relativeY = ((e.clientY - containerRect.top + scrollTop - pageTop) / zoomLevel);
+    const relativeY =
+      (e.clientY - containerRect.top + scrollTop - pageTop) / zoomLevel;
 
     if (draggedField.isExisting && draggedField.fieldId !== null) {
       // Update existing field position
-      setSignatureFields(prevFields =>
-        prevFields.map(field =>
+      setSignatureFields((prevFields) =>
+        prevFields.map((field) =>
           field.id === draggedField.fieldId
             ? { ...field, page, x: relativeX, y: relativeY }
             : field
@@ -369,20 +374,23 @@ const PdfViewer: React.FC<PdfViewerProps> = ({ pdfUrl }) => {
         fieldStatus: "pending",
       };
 
-      setSignatureFields(prevFields => [...prevFields, newSignatureField]);
-      setSignatureIdCounter(prev => prev + 1);
+      setSignatureFields((prevFields) => [...prevFields, newSignatureField]);
+      setSignatureIdCounter((prev) => prev + 1);
     }
 
     // Reset dragged field state
     setDraggedField({ fieldId: null, isExisting: false, fieldType: null });
   };
 
-  const handleFieldDragStart = (e: React.DragEvent, field: SignatureFieldData) => {
+  const handleFieldDragStart = (
+    e: React.DragEvent,
+    field: SignatureFieldData
+  ) => {
     e.stopPropagation();
     setDraggedField({
       fieldId: field.id,
       isExisting: true,
-      fieldType: field.fieldType
+      fieldType: field.fieldType,
     });
 
     // Set drag ghost image
@@ -395,17 +403,22 @@ const PdfViewer: React.FC<PdfViewerProps> = ({ pdfUrl }) => {
     setTimeout(() => document.body.removeChild(ghostDiv), 0);
   };
 
-  const handlePaletteDragStart = (e: React.DragEvent, fieldType: "signature" | "stamp") => {
+  const handlePaletteDragStart = (
+    e: React.DragEvent,
+    fieldType: "signature" | "stamp"
+  ) => {
     setDraggedField({
       fieldId: null,
       isExisting: false,
-      fieldType: fieldType
+      fieldType: fieldType,
     });
   };
 
   const handleDeleteField = (e: React.MouseEvent, fieldId: number) => {
     e.stopPropagation();
-    setSignatureFields(prevFields => prevFields.filter(field => field.id !== fieldId));
+    setSignatureFields((prevFields) =>
+      prevFields.filter((field) => field.id !== fieldId)
+    );
   };
 
   return (
@@ -569,22 +582,28 @@ const PdfViewer: React.FC<PdfViewerProps> = ({ pdfUrl }) => {
         currentPage={currentPage}
       />
       <div>
-        <div 
-          draggable 
+        <div
+          draggable
           onDragStart={(e) => handlePaletteDragStart(e, "signature")}
           style={{ marginBottom: "10px", cursor: "move" }}
         >
           Signature Field
         </div>
-        <div 
-          draggable 
+        <div
+          draggable
           onDragStart={(e) => handlePaletteDragStart(e, "stamp")}
           style={{ marginBottom: "20px", cursor: "move" }}
         >
           Stamp Field
         </div>
         <div style={{ display: "flex", flexDirection: "column", flex: 1 }}>
-          <div style={{ display: "flex", justifyContent: "center", marginBottom: "10px" }}>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              marginBottom: "10px",
+            }}
+          >
             <button onClick={handleZoomOut}>Zoom Out</button>
             <button onClick={handleZoomIn}>Zoom In</button>
           </div>
@@ -613,7 +632,7 @@ const PdfViewer: React.FC<PdfViewerProps> = ({ pdfUrl }) => {
                     }}
                     style={{ border: "1px solid #000" }}
                   />
-                  
+
                   {signatureFields
                     .filter((field) => field.page === index + 1)
                     .map((field) => (
@@ -637,8 +656,17 @@ const PdfViewer: React.FC<PdfViewerProps> = ({ pdfUrl }) => {
                           zIndex: 1000,
                         }}
                       >
-                        <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-                          {field.fieldType === "signature" ? "Signature" : "Stamp"} #{field.id}
+                        <div
+                          style={{
+                            display: "flex",
+                            flexDirection: "column",
+                            alignItems: "center",
+                          }}
+                        >
+                          {field.fieldType === "signature"
+                            ? "Signature"
+                            : "Stamp"}{" "}
+                          #{field.id}
                           <button
                             onClick={(e) => handleDeleteField(e, field.id)}
                             style={{
