@@ -1,6 +1,9 @@
 import React, { useState } from "react";
-import PdfViewer from "@/components/PdfViewer"; // Adjust path if needed
-import UploadButton from "@/components/UploadButton"; // Adjust path if needed
+import PdfViewer from "@/components/PdfViewer";
+import UploadButton from "@/components/UploadButton";
+import { HTML5Backend } from "react-dnd-html5-backend";
+
+import { DndProvider } from "react-dnd";
 
 const Home: React.FC = () => {
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
@@ -10,11 +13,12 @@ const Home: React.FC = () => {
   };
 
   return (
-    <div>
-      <h1>PDF Upload and Rendering (POC #1)</h1>
-      <UploadButton onPdfUploaded={handlePdfUploaded} />
-      <PdfViewer pdfUrl={pdfUrl} />
-    </div>
+    <DndProvider backend={HTML5Backend}>
+      <div className="container mx-auto px-4 py-8">
+        <UploadButton onPdfUploaded={handlePdfUploaded} />
+        {pdfUrl && <PdfViewer pdfUrl={pdfUrl} />}
+      </div>
+    </DndProvider>
   );
 };
 
