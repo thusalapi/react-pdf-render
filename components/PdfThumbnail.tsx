@@ -53,12 +53,19 @@ const PdfThumbnail: React.FC<PdfThumbnailsProps> = ({
               padding: "5px",
               borderBottom: "1px solid #eee",
               position: "relative",
+              transition: "background-color 0.2s ease",
             }}
           >
             <img
               src={thumbnail}
               alt={`Page ${index + 1}`}
-              style={{ width: "100%" }}
+              style={{
+                width: "100%",
+                border:
+                  currentPage === index + 1
+                    ? "2px solid #000"
+                    : "1px solid #ddd",
+              }}
             />
             <div
               style={{

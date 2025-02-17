@@ -25,14 +25,6 @@ interface DraggedField {
   fieldType: "signature" | "stamp" | null;
 }
 
-// const isFieldOverlappingPageBoundary = (
-//   y: number,
-//   pageHeight: number,
-//   fieldHeight: number
-// ): boolean => {
-//   return y + fieldHeight > pageHeight || y < 0;
-// };
-
 const getAdjustedPageAndPosition = (
   y: number,
   pageNumber: number,
@@ -124,82 +116,43 @@ const PdfViewer: React.FC<PdfViewerProps> = ({ pdfUrl }) => {
     }
   }, [pdfDocument, zoomLevel]);
 
-  const scrollToPage = useCallback(
-    (pageNumber: number) => {
-      if (scrollContainerRef.current && canvasRefs.current[pageNumber - 1]) {
-        const canvas = canvasRefs.current[pageNumber - 1];
-        const canvasTop = canvas ? canvas.offsetTop : 0;
+  const scrollToPage = useCallback((pageNumber: number) => {
+    if (scrollContainerRef.current && pageRefs.current[pageNumber - 1]) {
+      const pageElement = pageRefs.current[pageNumber - 1];
+      if (!pageElement) return;
 
-        scrollContainerRef.current.scrollTo({
-          top: canvasTop,
-          behavior: "smooth",
-        });
-      }
-    },
-    [canvasRefs]
-  );
+      const scrollTop = pageElement.offsetTop;
 
-  const handleThumbnailClick = useCallback(
-    (pageNumber: number) => {
-      setCurrentPage(pageNumber);
-      scrollToPage(pageNumber);
-    },
-    [scrollToPage]
-  );
+      scrollContainerRef.current.scrollTo({
+        top: scrollTop,
+        behavior: "smooth",
+      });
+    }
+  }, []);
+
+  const handleThumbnailClick = useCallback((pageNumber: number) => {
+    setCurrentPage(pageNumber);
+
+    // Add a small delay to ensure the page ref is available
+    if (pageRefs.current[pageNumber - 1]) {
+      const pageElement = pageRefs.current[pageNumber - 1];
+      if (!pageElement || !scrollContainerRef.current) return;
+
+      const scrollTop = pageElement.offsetTop;
+      scrollContainerRef.current.scrollTo({
+        top: scrollTop,
+        behavior: "smooth",
+      });
+    }
+  }, []);
 
   const handleZoomIn = () => {
-    setZoomLevel((prevZoomLevel) => prevZoomLevel + 0.5);
+    setZoomLevel((prevZoomLevel) => prevZoomLevel + 0.25);
   };
 
   const handleZoomOut = () => {
-    setZoomLevel((prevZoomLevel) => Math.max(prevZoomLevel - 0.5, 0.5));
+    setZoomLevel((prevZoomLevel) => Math.max(prevZoomLevel - 0.25, 0.25));
   };
-
-  // const handleDocumentClick = (e: React.MouseEvent<HTMLDivElement>) => {
-  //   if (!selectedFieldType || !pdfDocument || !scrollContainerRef.current)
-  //     return;
-
-  //   const containerRect = scrollContainerRef.current.getBoundingClientRect();
-  //   const x = (e.clientX - containerRect.left) / zoomLevel;
-  //   const y = (e.clientY - containerRect.top) / zoomLevel;
-
-  //   const newSignatureField: SignatureFieldData = {
-  //     id: signatureIdCounter,
-  //     page: currentPage,
-  //     x: x,
-  //     y: y,
-  //     width: 100,
-  //     height: 30,
-  //     fieldType: "signature",
-  //     fieldStatus: "completed",
-  //   };
-
-  //   setSignatureFields([...signatureFields, newSignatureField]);
-  //   setSignatureIdCounter(signatureIdCounter + 1); // Increment counter
-  //   setSelectedFieldType(null); // Deselect the field type after placing
-  // };
-
-  // const handleFieldDrag = (id: number, newX: number, newY: number) => {
-  //   const updatedFields = signatureFields.map((field) =>
-  //     field.id === id ? { ...field, x: newX, y: newY } : field
-  //   );
-  //   setSignatureFields(updatedFields);
-  // };
-
-  // const handleFieldResize = (
-  //   id: number,
-  //   newWidth: number,
-  //   newHeight: number
-  // ) => {
-  //   const updatedFields = signatureFields.map((field) =>
-  //     field.id === id ? { ...field, width: newWidth, height: newHeight } : field
-  //   );
-  //   setSignatureFields(updatedFields);
-  // };
-
-  // const handleFieldSelected = (fieldType: "signature" | "stamp" | null) => {
-  //   setSelectedFieldType(fieldType);
-  // };
 
   const handleSave = () => {
     const dataToSend = {
@@ -208,6 +161,33 @@ const PdfViewer: React.FC<PdfViewerProps> = ({ pdfUrl }) => {
 
     console.log("Signature Fields Data:", JSON.stringify(dataToSend, null, 2));
   };
+
+  const updateCurrentPage = useCallback(() => {
+    if (!scrollContainerRef.current || !pageRefs.current.length) return;
+
+    const container = scrollContainerRef.current;
+    const scrollTop = container.scrollTop;
+    const containerHeight = container.clientHeight;
+
+    for (let i = 0; i < pageRefs.current.length; i++) {
+      const pageRef = pageRefs.current[i];
+      if (!pageRef) continue;
+
+      const pageRect = pageRef.getBoundingClientRect();
+      const pageTop = pageRef.offsetTop;
+
+      // Check if the page is mostly visible in the viewport
+      if (
+        scrollTop >= pageTop - containerHeight / 2 &&
+        scrollTop < pageTop + pageRect.height - containerHeight / 2
+      ) {
+        if (currentPage !== i + 1) {
+          setCurrentPage(i + 1);
+        }
+        break;
+      }
+    }
+  }, [currentPage]);
 
   useEffect(() => {
     const loadPdf = async () => {
@@ -239,118 +219,44 @@ const PdfViewer: React.FC<PdfViewerProps> = ({ pdfUrl }) => {
   useEffect(() => {
     if (pdfDocument) {
       renderAllPages();
-      scrollToPage(currentPage);
+      if (currentPage > 1) {
+        scrollToPage(currentPage);
+      }
     }
   }, [currentPage, pdfDocument, zoomLevel, scrollToPage]);
 
-  // const handleDragOver = (e: React.DragEvent) => {
-  //   e.preventDefault();
-  //   e.stopPropagation();
-  // };
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
 
-  // const getPageFromY = (clientY: number): { page: number; pageTop: number } | null => {
-  //   if (!scrollContainerRef.current) return null;
+    let isInitialLoad = true;
+    const handleScroll = () => {
+      if (isInitialLoad) {
+        isInitialLoad = false;
+        return;
+      }
+      updateCurrentPage();
+    };
 
-  //   const containerRect = scrollContainerRef.current.getBoundingClientRect();
-  //   const scrollTop = scrollContainerRef.current.scrollTop;
-  //   const mouseY = clientY - containerRect.top + scrollTop;
+    container.addEventListener("scroll", handleScroll);
+    return () => container.removeEventListener("scroll", handleScroll);
+  }, [updateCurrentPage]);
 
-  //   for (let i = 0; i < pageRefs.current.length; i++) {
-  //     const pageElement = pageRefs.current[i];
-  //     if (!pageElement) continue;
+  const handlePaletteClick = async (fieldType: "signature" | "stamp") => {
+    if (!pdfDocument || !scrollContainerRef.current) return;
 
-  //     const pageRect = pageElement.getBoundingClientRect();
-  //     const pageTop = pageElement.offsetTop;
+    // Update current page before adding the field
+    updateCurrentPage();
 
-  //     if (mouseY >= pageTop && mouseY <= pageTop + pageRect.height) {
-  //       return {
-  //         page: i + 1,
-  //         pageTop: pageTop
-  //       };
-  //     }
-  //   }
-
-  //   return null;
-  // };
-
-  // const handleDrop = (e: React.DragEvent) => {
-  //   e.preventDefault();
-  //   e.stopPropagation();
-
-  //   const fieldType = e.dataTransfer.getData("fieldType") as "signature" | "stamp";
-  //   if (!fieldType || !scrollContainerRef.current) return;
-
-  //   const pageInfo = getPageFromY(e.clientY);
-  //   if (!pageInfo) return;
-
-  //   const { page, pageTop } = pageInfo;
-  //   const containerRect = scrollContainerRef.current.getBoundingClientRect();
-  //   const scrollTop = scrollContainerRef.current.scrollTop;
-
-  //   // Calculate position relative to the page
-  //   const relativeX = (e.clientX - containerRect.left) / zoomLevel;
-  //   const relativeY = ((e.clientY - containerRect.top + scrollTop - pageTop) / zoomLevel);
-
-  //   const newSignatureField: SignatureFieldData = {
-  //     id: signatureIdCounter,
-  //     page: page,
-  //     x: relativeX,
-  //     y: relativeY,
-  //     width: 100,
-  //     height: 30,
-  //     fieldType: fieldType,
-  //     fieldStatus: "pending",
-  //   };
-
-  //   setSignatureFields((prevFields) => [...prevFields, newSignatureField]);
-  //   setSignatureIdCounter((prev) => prev + 1);
-  // };
-
-  // const handleDragOver = (e: React.DragEvent) => {
-  //   e.preventDefault();
-  //   e.stopPropagation();
-  // };
-
-  // const getPageFromY = (
-  //   clientY: number
-  // ): { page: number; pageTop: number } | null => {
-  //   if (!scrollContainerRef.current) return null;
-
-  //   const containerRect = scrollContainerRef.current.getBoundingClientRect();
-  //   const scrollTop = scrollContainerRef.current.scrollTop;
-  //   const mouseY = clientY - containerRect.top + scrollTop;
-
-  //   for (let i = 0; i < pageRefs.current.length; i++) {
-  //     const pageElement = pageRefs.current[i];
-  //     if (!pageElement) continue;
-
-  //     const pageRect = pageElement.getBoundingClientRect();
-  //     const pageTop = pageElement.offsetTop;
-
-  //     if (mouseY >= pageTop && mouseY <= pageTop + pageRect.height) {
-  //       return {
-  //         page: i + 1,
-  //         pageTop: pageTop,
-  //       };
-  //     }
-  //   }
-
-  //   return null;
-  // };
-
-  const handleFieldPaletteClick = async (fieldType: "signature" | "stamp") => {
-    if (!pdfDocument || currentPage > pdfDocument.numPages) return;
-
+    // Get current page dimensions
     const pdfPage = await pdfDocument.getPage(currentPage);
     const viewport = pdfPage.getViewport({ scale: zoomLevel });
     const pageWidth = viewport.width / zoomLevel;
     const pageHeight = viewport.height / zoomLevel;
 
-    // Default field dimensions
+    // Calculate centered position
     const fieldWidth = 100;
     const fieldHeight = 30;
-
-    // Calculate center position
     const centerX = (pageWidth - fieldWidth) / 2;
     const centerY = (pageHeight - fieldHeight) / 2;
 
@@ -367,6 +273,9 @@ const PdfViewer: React.FC<PdfViewerProps> = ({ pdfUrl }) => {
 
     setSignatureFields((prevFields) => [...prevFields, newSignatureField]);
     setSignatureIdCounter((prev) => prev + 1);
+
+    // Ensure the field is visible
+    scrollToPage(currentPage);
   };
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -510,159 +419,6 @@ const PdfViewer: React.FC<PdfViewerProps> = ({ pdfUrl }) => {
   };
 
   return (
-    // <div style={{ display: "flex", flexDirection: "row" }}>
-    //   <PdfThumbnail
-    //     pdfDocument={pdfDocument}
-    //     onThumbnailClick={handleThumbnailClick}
-    //     currentPage={currentPage}
-    //   />
-    //   <div>
-    //     <FieldPalette onFieldSelected={handleFieldSelected} />
-    //     <div
-    //       style={{
-    //         display: "flex",
-    //         flexDirection: "column",
-    //         flex: 1,
-    //       }}
-    //     >
-    //       <div
-    //         style={{
-    //           display: "flex",
-    //           justifyContent: "center",
-    //           marginBottom: "10px",
-    //         }}
-    //       >
-    //         <button onClick={handleZoomOut}>Zoom Out</button>
-    //         <button onClick={handleZoomIn}>Zoom In</button>
-    //       </div>
-    //       <div
-    //         style={{
-    //           position: "relative",
-    //           display: "flex",
-    //           flexDirection: "column",
-    //           overflowY: "scroll",
-    //           height: "80vh",
-    //           cursor: selectedFieldType ? "crosshair" : "default",
-    //         }}
-    //         ref={scrollContainerRef}
-    //         onClick={handleDocumentClick}
-    //       >
-    //         <div style={{ position: "relative" }}>
-    //           {numPages &&
-    //             Array.from({ length: numPages }, (_, index) => (
-    //               <canvas
-    //                 key={index}
-    //                 ref={(el) => {
-    //                   canvasRefs.current[index] = el;
-    //                 }}
-    //                 style={{ marginBottom: "50px", border: "1px solid #000" }}
-    //               />
-    //             ))}
-
-    //           {signatureFields
-    //             .filter((field) => field.page === currentPage)
-    //             .map((field) => (
-    //               <div
-    //                 key={field.id}
-    //                 style={{
-    //                   position: "absolute",
-    //                   left: field.x * zoomLevel,
-    //                   top: field.y * zoomLevel,
-    //                   border: "1px solid blue",
-    //                   width: "100px",
-    //                   height: "40px",
-    //                   pointerEvents: "none", // Make sure it doesn't interfere with canvas events
-    //                 }}
-    //               >
-    //                 {field.id}
-    //               </div>
-    //             ))}
-    //         </div>
-    //       </div>
-    //     </div>
-    //     <button onClick={handleSave}>Save</button>
-    //   </div>
-    // </div>
-
-    // <div style={{ display: "flex", flexDirection: "row" }}>
-    //   <PdfThumbnail
-    //     pdfDocument={pdfDocument}
-    //     onThumbnailClick={handleThumbnailClick}
-    //     currentPage={currentPage}
-    //   />
-    //   <div>
-    //     <FieldPalette onFieldSelected={handleFieldSelected} />
-    //     <div style={{ display: "flex", flexDirection: "column", flex: 1 }}>
-    //       <div
-    //         style={{
-    //           display: "flex",
-    //           justifyContent: "center",
-    //           marginBottom: "10px",
-    //         }}
-    //       >
-    //         <button onClick={handleZoomOut}>Zoom Out</button>
-    //         <button onClick={handleZoomIn}>Zoom In</button>
-    //       </div>
-    //       <div
-    //         style={{
-    //           position: "relative",
-    //           display: "flex",
-    //           flexDirection: "column",
-    //           overflowY: "scroll",
-    //           height: "80vh",
-    //         }}
-    //         ref={scrollContainerRef}
-    //         onDragOver={handleDragOver}
-    //         onDrop={handleDrop}
-    //       >
-    //         {numPages &&
-    //           Array.from({ length: numPages }, (_, index) => (
-    //             <div
-    //               key={index}
-    //               ref={(el) => (pageRefs.current[index] = el)}
-    //               style={{ position: "relative", marginBottom: "50px" }}
-    //             >
-    //               <canvas
-    //                 ref={(el) => {
-    //                   canvasRefs.current[index] = el;
-    //                 }}
-    //                 style={{ border: "1px solid #000" }}
-    //               />
-
-    //               {/* Render fields for this specific page */}
-    //               {signatureFields
-    //                 .filter((field) => field.page === index + 1)
-    //                 .map((field) => (
-    //                   <div
-    //                     key={field.id}
-    //                     style={{
-    //                       position: "absolute",
-    //                       left: field.x * zoomLevel,
-    //                       top: field.y * zoomLevel,
-    //                       border: "1px solid blue",
-    //                       width: field.width * zoomLevel,
-    //                       height: field.height * zoomLevel,
-    //                       backgroundColor: "rgba(0, 0, 255, 0.1)",
-    //                       display: "flex",
-    //                       alignItems: "center",
-    //                       justifyContent: "center",
-    //                       pointerEvents: "none",
-    //                     }}
-    //                   >
-    //                     {field.fieldType === "signature"
-    //                       ? "Signature"
-    //                       : "Stamp"}{" "}
-    //                     #{field.id}
-    //                   </div>
-    //                 ))}
-    //             </div>
-    //           ))}
-    //       </div>
-    //     </div>
-    //     <button onClick={handleSave}>Save</button>
-    //   </div>
-    // </div>
-
     <div style={{ display: "flex", flexDirection: "row" }}>
       <PdfThumbnail
         pdfDocument={pdfDocument}
@@ -672,6 +428,7 @@ const PdfViewer: React.FC<PdfViewerProps> = ({ pdfUrl }) => {
       <div>
         <div
           draggable
+          onClick={() => handlePaletteClick("signature")}
           onDragStart={(e) => handlePaletteDragStart(e, "signature")}
           style={{ marginBottom: "10px", cursor: "move" }}
         >
@@ -679,6 +436,7 @@ const PdfViewer: React.FC<PdfViewerProps> = ({ pdfUrl }) => {
         </div>
         <div
           draggable
+          onClick={() => handlePaletteClick("stamp")}
           onDragStart={(e) => handlePaletteDragStart(e, "stamp")}
           style={{ marginBottom: "20px", cursor: "move" }}
         >
