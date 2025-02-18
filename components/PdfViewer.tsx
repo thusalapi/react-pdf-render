@@ -33,7 +33,6 @@ const PdfViewer: React.FC<PdfViewerProps> = ({ pdfUrl }) => {
   } = useDragAndDrop(
     pdfDocument,
     zoomLevel,
-    currentPage,
     setSignatureFields,
     signatureIdCounter,
     setSignatureIdCounter,

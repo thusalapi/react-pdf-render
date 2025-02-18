@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState } from "react";
 import { SignatureFieldData, DraggedField } from "../types";
 import { getAdjustedPageAndPosition } from "../utils";
 import * as pdfjsLib from "pdfjs-dist";
@@ -6,7 +6,6 @@ import * as pdfjsLib from "pdfjs-dist";
 export const useDragAndDrop = (
   pdfDocument: pdfjsLib.PDFDocumentProxy | null,
   zoomLevel: number,
-  currentPage: number,
   setSignatureFields: React.Dispatch<
     React.SetStateAction<SignatureFieldData[]>
   >,
