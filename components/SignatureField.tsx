@@ -8,14 +8,14 @@ const SignatureField: React.FC<SignatureFieldProps> = ({
   onFieldDragStart,
   onDeleteField,
 }) => {
+  const { attributes, listeners, setNodeRef, transform, isDragging } =
+    useDraggable({
+      id: field?.id ?? "default-id",
+    });
+
   if (!field) {
     return null;
   }
-
-  const { attributes, listeners, setNodeRef, transform, isDragging } =
-    useDraggable({
-      id: field.id,
-    });
 
   const style: React.CSSProperties = {
     opacity: isDragging ? 0.5 : 1,
