@@ -1,20 +1,17 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
-import * as pdfjsLib from "pdfjs-dist";
+import React, { useState, useEffect, useCallback } from "react";
 import PdfThumbnail from "./PdfThumbnail";
 import ZoomControls from "./ZoomControls";
 import FieldPalette from "./FieldPalette";
 import SignatureField from "./SignatureField";
 import { getAdjustedPageAndPosition } from "../utils";
 import { PdfViewerProps, SignatureFieldData, DraggedField } from "../types";
-pdfjsLib.GlobalWorkerOptions.workerSrc = `/pdfjs-dist/pdf.worker.mjs`;
+import { usePdfDocument } from "../hooks/usePdfDocument";
+import { useRenderPages } from "../hooks/useRenderPages";
+import { useScroll } from "../hooks/useScroll";
 
 const PdfViewer: React.FC<PdfViewerProps> = ({ pdfUrl }) => {
-  const [pdfDocument, setPdfDocument] =
-    useState<pdfjsLib.PDFDocumentProxy | null>(null);
-  const [numPages, setNumPages] = useState<number | null>(null);
+  const { pdfDocument, numPages } = usePdfDocument(pdfUrl);
   const [zoomLevel, setZoomLevel] = useState<number>(1.5);
-  const canvasRefs = useRef<(HTMLCanvasElement | null)[]>([]);
-  const renderingTasks = useRef<(pdfjsLib.RenderTask | null)[]>([]);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [signatureFields, setSignatureFields] = useState<SignatureFieldData[]>(
     []
@@ -25,80 +22,30 @@ const PdfViewer: React.FC<PdfViewerProps> = ({ pdfUrl }) => {
     isExisting: false,
     fieldType: null,
   });
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const pageRefs = useRef<(HTMLDivElement | null)[]>([]);
 
-  const renderPage = async (pageNumber: number, scale: number) => {
-    if (!pdfDocument || !canvasRefs.current[pageNumber - 1]) return;
+  const { canvasRefs, renderAllPages } = useRenderPages(pdfDocument, zoomLevel);
+  const { scrollContainerRef, pageRefs, scrollToPage } = useScroll(
+    numPages,
+    currentPage,
+    setCurrentPage
+  );
 
-    try {
-      const page = await pdfDocument.getPage(pageNumber);
-      const viewport = page.getViewport({ scale });
-      const canvas = canvasRefs.current[pageNumber - 1];
-      const context = canvas?.getContext("2d");
-      if (canvas) {
-        canvas.height = viewport.height;
-        canvas.width = viewport.width;
-        const outputScale = window.devicePixelRatio || 1;
-        canvas.width = Math.floor(viewport.width * outputScale);
-        canvas.height = Math.floor(viewport.height * outputScale);
-        canvas.style.width = `${viewport.width}px`;
-        canvas.style.height = `${viewport.height}px`;
-        context?.scale(outputScale, outputScale);
-      }
-
-      if (context) {
-        if (renderingTasks.current[pageNumber - 1]) {
-          renderingTasks.current[pageNumber - 1]!.cancel();
-        }
-        const renderTask = page.render({
-          canvasContext: context,
-          viewport: viewport,
-        });
-        renderingTasks.current[pageNumber - 1] = renderTask;
-        await renderTask.promise;
-      }
-    } catch (error) {
-      if (
-        error instanceof Error &&
-        error.name !== "RenderingCancelledException"
-      ) {
-        console.error("Error rendering page:", error);
+  useEffect(() => {
+    if (pdfDocument) {
+      renderAllPages();
+      if (currentPage > 1) {
+        scrollToPage(currentPage);
       }
     }
-  };
+  }, [currentPage, pdfDocument, zoomLevel, renderAllPages, scrollToPage]);
 
-  const renderAllPages = useCallback(async () => {
-    if (!pdfDocument) return;
-    for (let i = 1; i <= pdfDocument.numPages; i++) {
-      await renderPage(i, zoomLevel);
-    }
-  }, [pdfDocument, zoomLevel]);
-
-  const scrollToPage = useCallback((pageNumber: number) => {
-    if (scrollContainerRef.current && pageRefs.current[pageNumber - 1]) {
-      const pageElement = pageRefs.current[pageNumber - 1];
-      if (!pageElement) return;
-      const scrollTop = pageElement.offsetTop;
-      scrollContainerRef.current.scrollTo({
-        top: scrollTop,
-        behavior: "smooth",
-      });
-    }
-  }, []);
-
-  const handleThumbnailClick = useCallback((pageNumber: number) => {
-    setCurrentPage(pageNumber);
-    if (pageRefs.current[pageNumber - 1]) {
-      const pageElement = pageRefs.current[pageNumber - 1];
-      if (!pageElement || !scrollContainerRef.current) return;
-      const scrollTop = pageElement.offsetTop;
-      scrollContainerRef.current.scrollTo({
-        top: scrollTop,
-        behavior: "smooth",
-      });
-    }
-  }, []);
+  const handleThumbnailClick = useCallback(
+    (pageNumber: number) => {
+      setCurrentPage(pageNumber);
+      scrollToPage(pageNumber);
+    },
+    [scrollToPage]
+  );
 
   const handleZoomIn = () =>
     setZoomLevel((prevZoomLevel) => prevZoomLevel + 0.25);
@@ -110,77 +57,8 @@ const PdfViewer: React.FC<PdfViewerProps> = ({ pdfUrl }) => {
     console.log("Signature Fields Data:", JSON.stringify(dataToSend, null, 2));
   };
 
-  const updateCurrentPage = useCallback(() => {
-    if (!scrollContainerRef.current || !pageRefs.current.length) return;
-    const container = scrollContainerRef.current;
-    const scrollTop = container.scrollTop;
-    const containerHeight = container.clientHeight;
-    for (let i = 0; i < pageRefs.current.length; i++) {
-      const pageRef = pageRefs.current[i];
-      if (!pageRef) continue;
-      const pageRect = pageRef.getBoundingClientRect();
-      const pageTop = pageRef.offsetTop;
-      if (
-        scrollTop >= pageTop - containerHeight / 2 &&
-        scrollTop < pageTop + pageRect.height - containerHeight / 2
-      ) {
-        if (currentPage !== i + 1) {
-          setCurrentPage(i + 1);
-        }
-        break;
-      }
-    }
-  }, [currentPage]);
-
-  useEffect(() => {
-    const loadPdf = async () => {
-      if (!pdfUrl) return;
-      try {
-        const loadingTask = pdfjsLib.getDocument(pdfUrl);
-        const pdf = await loadingTask.promise;
-        setPdfDocument(pdf);
-        setNumPages(pdf.numPages);
-        canvasRefs.current = Array.from({ length: pdf.numPages }, () => null);
-        await renderAllPages();
-      } catch (error) {
-        console.error("Error loading PDF:", error);
-      }
-    };
-    loadPdf();
-    return () => {
-      if (pdfDocument) {
-        pdfDocument.destroy();
-      }
-    };
-  }, [pdfUrl]);
-
-  useEffect(() => {
-    if (pdfDocument) {
-      renderAllPages();
-      if (currentPage > 1) {
-        scrollToPage(currentPage);
-      }
-    }
-  }, [currentPage, pdfDocument, zoomLevel, scrollToPage]);
-
-  useEffect(() => {
-    const container = scrollContainerRef.current;
-    if (!container) return;
-    let isInitialLoad = true;
-    const handleScroll = () => {
-      if (isInitialLoad) {
-        isInitialLoad = false;
-        return;
-      }
-      updateCurrentPage();
-    };
-    container.addEventListener("scroll", handleScroll);
-    return () => container.removeEventListener("scroll", handleScroll);
-  }, [updateCurrentPage]);
-
   const handlePaletteClick = async (fieldType: "signature" | "stamp") => {
     if (!pdfDocument || !scrollContainerRef.current) return;
-    updateCurrentPage();
     const pdfPage = await pdfDocument.getPage(currentPage);
     const viewport = pdfPage.getViewport({ scale: zoomLevel });
     const pageWidth = viewport.width / zoomLevel;
