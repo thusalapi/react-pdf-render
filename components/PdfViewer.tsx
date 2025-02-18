@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
+
 import PdfThumbnail from "./PdfThumbnail";
 import ZoomControls from "./ZoomControls";
 import FieldPalette from "./FieldPalette";
@@ -134,6 +135,7 @@ const PdfViewer: React.FC<PdfViewerProps> = ({ pdfUrl }) => {
                   }}
                   style={{ position: "relative", marginBottom: "50px" }}
                 >
+
                   <canvas
                     ref={(el) => {
                       canvasRefs.current[index] = el;
