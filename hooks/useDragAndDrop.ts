@@ -1,4 +1,11 @@
-import { useState } from "react";
+import {
+  useState,
+  Dispatch,
+  SetStateAction,
+  RefObject,
+  MutableRefObject,
+  DragEvent,
+} from "react";
 import { SignatureFieldData, DraggedField } from "../types";
 import { getAdjustedPageAndPosition } from "../utils";
 import * as pdfjsLib from "pdfjs-dist";
@@ -6,13 +13,11 @@ import * as pdfjsLib from "pdfjs-dist";
 export const useDragAndDrop = (
   pdfDocument: pdfjsLib.PDFDocumentProxy | null,
   zoomLevel: number,
-  setSignatureFields: React.Dispatch<
-    React.SetStateAction<SignatureFieldData[]>
-  >,
+  setSignatureFields: Dispatch<SetStateAction<SignatureFieldData[]>>,
   signatureIdCounter: number,
-  setSignatureIdCounter: React.Dispatch<React.SetStateAction<number>>,
-  scrollContainerRef: React.RefObject<HTMLDivElement | null>,
-  pageRefs: React.MutableRefObject<(HTMLDivElement | null)[]>
+  setSignatureIdCounter: Dispatch<SetStateAction<number>>,
+  scrollContainerRef: RefObject<HTMLDivElement | null>,
+  pageRefs: MutableRefObject<(HTMLDivElement | null)[]>
 ) => {
   const [draggedField, setDraggedField] = useState<DraggedField>({
     fieldId: null,
@@ -20,7 +25,7 @@ export const useDragAndDrop = (
     fieldType: null,
   });
 
-  const handleDragOver = (e: React.DragEvent) => e.preventDefault();
+  const handleDragOver = (e: DragEvent) => e.preventDefault();
 
   const getPageFromY = (
     clientY: number
@@ -41,7 +46,7 @@ export const useDragAndDrop = (
     return null;
   };
 
-  const handleDrop = async (e: React.DragEvent) => {
+  const handleDrop = async (e: DragEvent) => {
     e.preventDefault();
     const pageInfo = getPageFromY(e.clientY);
     if (!pageInfo || !scrollContainerRef.current || !pdfDocument) return;
@@ -101,10 +106,7 @@ export const useDragAndDrop = (
     setDraggedField({ fieldId: null, isExisting: false, fieldType: null });
   };
 
-  const handleFieldDragStart = (
-    e: React.DragEvent,
-    field: SignatureFieldData
-  ) => {
+  const handleFieldDragStart = (e: DragEvent, field: SignatureFieldData) => {
     e.stopPropagation();
     setDraggedField({
       fieldId: field.id,
@@ -120,10 +122,7 @@ export const useDragAndDrop = (
     setTimeout(() => document.body.removeChild(ghostDiv), 0);
   };
 
-  const handlePaletteDragStart = (
-    e: React.DragEvent,
-    fieldType: "signature" | "stamp"
-  ) => {
+  const handlePaletteDragStart = (fieldType: "signature" | "stamp") => {
     setDraggedField({ fieldId: null, isExisting: false, fieldType: fieldType });
   };
 
