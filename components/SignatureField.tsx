@@ -1,42 +1,63 @@
-import React, { useRef, useEffect } from "react";
-import { useDrag } from "react-dnd";
+import React from "react";
+import { useDraggable } from "@dnd-kit/core";
+import { SignatureFieldProps } from "../types";
 
-interface SignatureFieldProps {
-  id: string;
-  fieldType: "signature" | "stamp";
-}
+const SignatureField: React.FC<SignatureFieldProps> = ({
+  field,
+  zoomLevel,
+  onFieldDragStart,
+  onDeleteField,
+}) => {
+  if (!field) {
+    return null;
+  }
 
-const SignatureField: React.FC<SignatureFieldProps> = ({ id, fieldType }) => {
-  const ref = useRef<HTMLDivElement>(null);
-  const [{ isDragging }, drag] = useDrag({
-    type: "SIGNATURE",
-    item: { id: id, type: "SIGNATURE", fieldType: fieldType },
-    collect: (monitor) => ({
-      isDragging: !!monitor.isDragging(),
-    }),
-  });
+  const { attributes, listeners, setNodeRef, transform, isDragging } =
+    useDraggable({
+      id: field.id,
+    });
 
-  useEffect(() => {
-    if (ref.current) {
-      drag(ref.current);
-    }
-  }, [drag]);
+  const style: React.CSSProperties = {
+    opacity: isDragging ? 0.5 : 1,
+    fontWeight: "bold",
+    cursor: "move",
+    border: "1px dashed gray",
+    padding: "8px",
+    backgroundColor: "white",
+    width: `${field.width * zoomLevel}px`,
+    height: `${field.height * zoomLevel}px`,
+    position: "absolute",
+    left: `${field.x * zoomLevel}px`,
+    top: `${field.y * zoomLevel}px`,
+    textAlign: "center",
+    transform: transform
+      ? `translate3d(${transform.x}px, ${transform.y}px, 0)`
+      : undefined,
+  };
 
   return (
     <div
-      ref={ref}
-      style={{
-        opacity: isDragging ? 0.5 : 1,
-        fontWeight: "bold",
-        cursor: "move",
-        border: "1px dashed gray",
-        padding: "8px",
-        backgroundColor: "white",
-        width: "100px",
-        textAlign: "center",
-      }}
+      ref={setNodeRef}
+      style={style}
+      {...listeners}
+      {...attributes}
+      onDragStart={(e) => onFieldDragStart(e, field)}
     >
-      {fieldType === "signature" ? "Signature" : "Stamp"}
+      {field.fieldType === "signature" ? "Signature" : "Stamp"}
+      <button
+        style={{
+          position: "absolute",
+          top: "0",
+          right: "0",
+          background: "red",
+          color: "white",
+          border: "none",
+          cursor: "pointer",
+        }}
+        onClick={(e) => onDeleteField(e, field.id)}
+      >
+        X
+      </button>
     </div>
   );
 };

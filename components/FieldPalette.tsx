@@ -1,34 +1,27 @@
 import React from "react";
-import SignatureField from "./SignatureField";
+import { FieldPaletteProps } from "../types";
 
-interface FieldPaletteProps {
-  onFieldSelected: (fieldType: "signature" | "stamp" | null) => void;
-}
-
-const FieldPalette: React.FC<FieldPaletteProps> = ({ onFieldSelected }) => {
-  const handleDragStart = (
-    e: React.DragEvent,
-    fieldType: "signature" | "stamp"
-  ) => {
-    e.dataTransfer.setData("fieldType", fieldType);
-    onFieldSelected(fieldType);
-  };
-
+const FieldPalette: React.FC<FieldPaletteProps> = ({
+  onPaletteClick,
+  onPaletteDragStart,
+}) => {
   return (
     <div style={{ marginBottom: "20px" }}>
       <div
         draggable
-        onDragStart={(e) => handleDragStart(e, "signature")}
+        onDragStart={(e) => onPaletteDragStart(e, "signature")}
+        onClick={() => onPaletteClick("signature")}
         style={{ cursor: "move", marginBottom: "10px" }}
       >
-        <SignatureField id="signature-field" fieldType="signature" />
+        Signature
       </div>
       <div
         draggable
-        onDragStart={(e) => handleDragStart(e, "stamp")}
+        onDragStart={(e) => onPaletteDragStart(e, "stamp")}
+        onClick={() => onPaletteClick("stamp")}
         style={{ cursor: "move" }}
       >
-        <SignatureField id="stamp-field" fieldType="stamp" />
+        Stamp
       </div>
     </div>
   );

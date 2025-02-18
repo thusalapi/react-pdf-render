@@ -1,13 +1,7 @@
 import React, { useEffect, useState } from "react";
-import * as pdfjsLib from "pdfjs-dist";
+import { PdfThumbnailProps } from "../types";
 
-interface PdfThumbnailsProps {
-  pdfDocument: pdfjsLib.PDFDocumentProxy | null;
-  onThumbnailClick: (pageNumber: number) => void;
-  currentPage: number;
-}
-
-const PdfThumbnail: React.FC<PdfThumbnailsProps> = ({
+const PdfThumbnail: React.FC<PdfThumbnailProps> = ({
   pdfDocument,
   onThumbnailClick,
   currentPage,
