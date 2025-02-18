@@ -1,13 +1,7 @@
 import React, { useEffect, useState } from "react";
-import * as pdfjsLib from "pdfjs-dist";
+import { PdfThumbnailProps } from "../types";
 
-interface PdfThumbnailsProps {
-  pdfDocument: pdfjsLib.PDFDocumentProxy | null;
-  onThumbnailClick: (pageNumber: number) => void;
-  currentPage: number;
-}
-
-const PdfThumbnail: React.FC<PdfThumbnailsProps> = ({
+const PdfThumbnail: React.FC<PdfThumbnailProps> = ({
   pdfDocument,
   onThumbnailClick,
   currentPage,
@@ -53,12 +47,19 @@ const PdfThumbnail: React.FC<PdfThumbnailsProps> = ({
               padding: "5px",
               borderBottom: "1px solid #eee",
               position: "relative",
+              transition: "background-color 0.2s ease",
             }}
           >
             <img
               src={thumbnail}
               alt={`Page ${index + 1}`}
-              style={{ width: "100%" }}
+              style={{
+                width: "100%",
+                border:
+                  currentPage === index + 1
+                    ? "2px solid #000"
+                    : "1px solid #ddd",
+              }}
             />
             <div
               style={{
