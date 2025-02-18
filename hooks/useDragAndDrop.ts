@@ -122,7 +122,10 @@ export const useDragAndDrop = (
     setTimeout(() => document.body.removeChild(ghostDiv), 0);
   };
 
-  const handlePaletteDragStart = (fieldType: "signature" | "stamp") => {
+  const handlePaletteDragStart = (
+    e: DragEvent,
+    fieldType: "signature" | "stamp"
+  ) => {
     setDraggedField({ fieldId: null, isExisting: false, fieldType: fieldType });
   };
 
