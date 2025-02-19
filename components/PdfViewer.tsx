@@ -152,182 +152,197 @@ const PdfViewer: React.FC<PdfViewerProps> = ({ pdfUrl }) => {
           currentPage={currentPage}
         />
       </Box>
-      <Stack spacing={2} sx={{ flex: 1 }}>
-        <Paper elevation={2} sx={{ p: 2, flexShrink: 0 }}>
-          <Stack spacing={1}>
+      <Box
+        sx={{
+          flex: 1,
+          overflow: "hidden",
+        }}
+      >
+        <Stack spacing={2} sx={{ flex: 1 }}>
+          <Paper elevation={2} sx={{ p: 2, flexShrink: 0 }}>
+            <Stack spacing={1}>
+              <Box
+                draggable
+                onClick={() => handlePaletteClick("signature")}
+                onDragStart={(e) => handlePaletteDragStart(e, "signature")}
+                sx={{
+                  p: 1.5,
+                  border: "1px solid",
+                  borderColor: "primary.main",
+                  borderRadius: 1,
+                  cursor: "move",
+                  textAlign: "center",
+                  bgcolor: "background.paper",
+                  "&:hover": {
+                    bgcolor: "primary.light",
+                    color: "primary.contrastText",
+                  },
+                  transition: "all 0.2s ease-in-out",
+                }}
+              >
+                Signature Field
+              </Box>
+              <Box
+                draggable
+                onClick={() => handlePaletteClick("stamp")}
+                onDragStart={(e) => handlePaletteDragStart(e, "stamp")}
+                sx={{
+                  p: 1.5,
+                  border: "1px solid",
+                  borderColor: "primary.main",
+                  borderRadius: 1,
+                  cursor: "move",
+                  textAlign: "center",
+                  bgcolor: "background.paper",
+                  "&:hover": {
+                    bgcolor: "primary.light",
+                    color: "primary.contrastText",
+                  },
+                  transition: "all 0.2s ease-in-out",
+                }}
+              >
+                Stamp Field
+              </Box>
+            </Stack>
+          </Paper>
+          <Box>
+            <Stack
+              direction="row"
+              spacing={1}
+              justifyContent="center"
+              alignItems="center"
+              sx={{ flexShrink: 0 }}
+            >
+              <IconButton onClick={handleZoomOut} size="small">
+                <ZoomOutIcon />
+              </IconButton>
+              <Typography variant="body2">
+                {Math.round(zoomLevel * 100)}%
+              </Typography>
+              <IconButton onClick={handleZoomIn} size="small">
+                <ZoomInIcon />
+              </IconButton>
+            </Stack>
             <Box
-              draggable
-              onClick={() => handlePaletteClick("signature")}
-              onDragStart={(e) => handlePaletteDragStart(e, "signature")}
+              ref={scrollContainerRef}
+              onDragOver={handleDragOver}
+              onDrop={handleDrop}
               sx={{
-                p: 1.5,
-                border: "1px solid",
-                borderColor: "primary.main",
-                borderRadius: 1,
-                cursor: "move",
-                textAlign: "center",
-                bgcolor: "background.paper",
-                "&:hover": {
-                  bgcolor: "primary.light",
-                  color: "primary.contrastText",
-                },
-                transition: "all 0.2s ease-in-out",
+                height: "80vh",
+                overflowY: "scroll",
+                overflowX: "auto",
+                position: "relative",
+                bgcolor: theme.palette.grey[100],
+                p: 2,
+                margin: "0 auto",
               }}
             >
-              Signature Field
-            </Box>
-            <Box
-              draggable
-              onClick={() => handlePaletteClick("stamp")}
-              onDragStart={(e) => handlePaletteDragStart(e, "stamp")}
-              sx={{
-                p: 1.5,
-                border: "1px solid",
-                borderColor: "primary.main",
-                borderRadius: 1,
-                cursor: "move",
-                textAlign: "center",
-                bgcolor: "background.paper",
-                "&:hover": {
-                  bgcolor: "primary.light",
-                  color: "primary.contrastText",
-                },
-                transition: "all 0.2s ease-in-out",
-              }}
-            >
-              Stamp Field
-            </Box>
-          </Stack>
-        </Paper>
-        <Box>
-          <Stack
-            direction="row"
-            spacing={1}
-            justifyContent="center"
-            alignItems="center"
-            sx={{ flexShrink: 0 }}
-          >
-            <IconButton onClick={handleZoomOut} size="small">
-              <ZoomOutIcon />
-            </IconButton>
-            <Typography variant="body2">
-              {Math.round(zoomLevel * 100)}%
-            </Typography>
-            <IconButton onClick={handleZoomIn} size="small">
-              <ZoomInIcon />
-            </IconButton>
-          </Stack>
-          <Box
-            ref={scrollContainerRef}
-            onDragOver={handleDragOver}
-            onDrop={handleDrop}
-            sx={{
-              height: "80vh",
-              overflowY: "scroll",
-              overflowX: "hidden",
-              position: "relative",
-              bgcolor: theme.palette.grey[100],
-              p: 2,
-              margin: "0 auto",
-            }}
-          >
-            <Stack spacing={4} alignItems="center">
-              {numPages &&
-                Array.from({ length: numPages }, (_, index) => (
-                  <Box
-                    key={index}
-                    ref={(el: HTMLDivElement | null) => {
-                      pageRefs.current[index] = el;
-                    }}
-                    position="relative"
-                    sx={{
-                      width: getPageDimensions(index + 1).width,
-                      height: getPageDimensions(index + 1).height,
-                    }}
-                  >
-                    <Paper
-                      elevation={3}
+              <Stack spacing={4} alignItems="center">
+                {numPages &&
+                  Array.from({ length: numPages }, (_, index) => (
+                    <Box
+                      key={index}
+                      ref={(el: HTMLDivElement | null) => {
+                        pageRefs.current[index] = el;
+                      }}
+                      position="relative"
                       sx={{
-                        width: "fit-content",
-                        height: "fit-content",
+                        width: getPageDimensions(index + 1).width,
+                        height: getPageDimensions(index + 1).height,
                       }}
                     >
-                      <canvas
-                        ref={(el) => {
-                          canvasRefs.current[index] = el;
+                      <Paper
+                        elevation={3}
+                        sx={{
+                          width: "fit-content",
+                          height: "fit-content",
                         }}
-                        style={{
-                          display: "block",
-                          transformOrigin: "center center",
-                          maxWidth: "100%",
-                          height: "auto",
-                        }}
-                      />
-                    </Paper>
-                    {signatureFields
-                      .filter((field) => field.page === index + 1)
-                      .map((field) => (
-                        <Paper
-                          key={field.id}
-                          elevation={2}
-                          draggable
-                          onDragStart={(e) => handleFieldDragStart(e, field)}
-                          sx={{
-                            position: "absolute",
-                            left: field.x * zoomLevel,
-                            top: field.y * zoomLevel,
-                            width: field.width * zoomLevel,
-                            height: field.height * zoomLevel,
-                            bgcolor: "rgba(25, 118, 210, 0.08)",
-                            border: `1px solid ${theme.palette.primary.main}`,
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            cursor: "move",
-                            userSelect: "none",
-                            zIndex: 1000,
-                            transition: "all 0.2s ease-in-out",
+                      >
+                        <canvas
+                          ref={(el) => {
+                            canvasRefs.current[index] = el;
                           }}
-                        >
-                          <Stack alignItems="center">
-                            <Typography variant="caption">
-                              {field.fieldType === "signature"
-                                ? "Signature"
-                                : "Stamp"}{" "}
-                              #{field.id}
-                            </Typography>
-                            <IconButton
-                              size="small"
-                              onClick={(e) => handleDeleteField(e, field.id)}
-                              sx={{
-                                position: "absolute",
-                                top: -20,
-                                right: -20,
-                                bgcolor: "white",
-                                "&:hover": {
-                                  bgcolor: theme.palette.error.light,
-                                },
-                              }}
-                            >
-                              <DeleteIcon fontSize="small" color="error" />
-                            </IconButton>
-                          </Stack>
-                        </Paper>
-                      ))}
-                  </Box>
-                ))}
-            </Stack>
+                          style={{
+                            display: "block",
+                            transformOrigin: "center center",
+                            maxWidth: "100%",
+                            height: "auto",
+                          }}
+                        />
+                      </Paper>
+                      {signatureFields
+                        .filter((field) => field.page === index + 1)
+                        .map((field) => (
+                          <Paper
+                            key={field.id}
+                            elevation={2}
+                            draggable
+                            onDragStart={(e) => handleFieldDragStart(e, field)}
+                            sx={{
+                              position: "absolute",
+                              left: field.x * zoomLevel,
+                              top: field.y * zoomLevel,
+                              width: field.width * zoomLevel,
+                              height: field.height * zoomLevel,
+                              bgcolor: "rgba(25, 118, 210, 0.08)",
+                              border: `1px solid ${theme.palette.primary.main}`,
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              cursor: "move",
+                              userSelect: "none",
+                              zIndex: 1000,
+                              transition: "all 0.2s ease-in-out",
+                            }}
+                          >
+                            <Stack alignItems="center">
+                              <Typography variant="caption">
+                                {field.fieldType === "signature"
+                                  ? "Signature"
+                                  : "Stamp"}{" "}
+                                #{field.id}
+                              </Typography>
+                              <IconButton
+                                size="small"
+                                onClick={(e) => handleDeleteField(e, field.id)}
+                                sx={{
+                                  position: "absolute",
+                                  top: -20,
+                                  right: -20,
+                                  bgcolor: "white",
+                                  "&:hover": {
+                                    bgcolor: theme.palette.error.light,
+                                  },
+                                }}
+                              >
+                                <DeleteIcon fontSize="small" color="error" />
+                              </IconButton>
+                            </Stack>
+                          </Paper>
+                        ))}
+                    </Box>
+                  ))}
+              </Stack>
+            </Box>
           </Box>
-        </Box>
-        <Button
-          variant="contained"
-          startIcon={<SaveIcon />}
-          onClick={handleSave}
-          fullWidth
-        >
-          Save
-        </Button>
-      </Stack>
+          <Button
+            variant="contained"
+            startIcon={<SaveIcon />}
+            onClick={handleSave}
+            fullWidth
+          >
+            Save
+          </Button>
+        </Stack>
+      </Box>
+      <Box
+        sx={{
+          backgroundColor: "red",
+          width: "400px",
+        }}
+      >
+        <Box>jjj</Box>
+      </Box>
     </Box>
   );
 };
