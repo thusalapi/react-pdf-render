@@ -1,4 +1,4 @@
-import { useRef, useCallback } from "react";
+import { useRef, useCallback, useState } from "react";
 import * as pdfjsLib from "pdfjs-dist";
 
 export const useRenderPages = (
@@ -7,23 +7,42 @@ export const useRenderPages = (
 ) => {
   const canvasRefs = useRef<(HTMLCanvasElement | null)[]>([]);
   const renderingTasks = useRef<(pdfjsLib.RenderTask | null)[]>([]);
+  const [baseViewports, setBaseViewports] = useState<pdfjsLib.PageViewport[]>(
+    []
+  );
 
   const renderPage = async (pageNumber: number, scale: number) => {
     if (!pdfDocument || !canvasRefs.current[pageNumber - 1]) return;
 
     try {
       const page = await pdfDocument.getPage(pageNumber);
-      const viewport = page.getViewport({ scale });
+
+      // Create base viewport if not exists
+      if (!baseViewports[pageNumber - 1]) {
+        const baseViewport = page.getViewport({ scale: 1.0 });
+        setBaseViewports((prev) => {
+          const newViewports = [...prev];
+          newViewports[pageNumber - 1] = baseViewport;
+          return newViewports;
+        });
+      }
+
+      const viewport = page.getViewport({ scale: 1.0 }); // Always use base scale
       const canvas = canvasRefs.current[pageNumber - 1];
       const context = canvas?.getContext("2d");
+
       if (canvas) {
-        canvas.height = viewport.height;
-        canvas.width = viewport.width;
+        // Set canvas to base dimensions
         const outputScale = window.devicePixelRatio || 1;
         canvas.width = Math.floor(viewport.width * outputScale);
         canvas.height = Math.floor(viewport.height * outputScale);
+
+        // Apply zoom through CSS transform
         canvas.style.width = `${viewport.width}px`;
         canvas.style.height = `${viewport.height}px`;
+        canvas.style.transform = `scale(${scale})`;
+        canvas.style.transformOrigin = "top left";
+
         context?.scale(outputScale, outputScale);
       }
 
@@ -31,10 +50,12 @@ export const useRenderPages = (
         if (renderingTasks.current[pageNumber - 1]) {
           renderingTasks.current[pageNumber - 1]!.cancel();
         }
+
         const renderTask = page.render({
           canvasContext: context,
           viewport: viewport,
         });
+
         renderingTasks.current[pageNumber - 1] = renderTask;
         await renderTask.promise;
       }
@@ -55,5 +76,14 @@ export const useRenderPages = (
     }
   }, [pdfDocument, zoomLevel]);
 
-  return { canvasRefs, renderAllPages };
+  const getPageDimensions = (pageNumber: number) => {
+    const viewport = baseViewports[pageNumber - 1];
+    if (!viewport) return { width: 0, height: 0 };
+    return {
+      width: viewport.width,
+      height: viewport.height,
+    };
+  };
+
+  return { canvasRefs, renderAllPages, getPageDimensions };
 };

@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import * as pdfjsLib from "pdfjs-dist";
 import PdfThumbnail from "./PdfThumbnail";
 import {
   Box,
@@ -46,7 +45,10 @@ const PdfViewer: React.FC<PdfViewerProps> = ({ pdfUrl }) => {
   const [signatureIdCounter, setSignatureIdCounter] = useState<number>(0);
 
   const { pdfDocument, numPages } = usePdfDocument(pdfUrl || "");
-  const { canvasRefs, renderAllPages } = useRenderPages(pdfDocument, zoomLevel);
+  const { canvasRefs, renderAllPages, getPageDimensions } = useRenderPages(
+    pdfDocument,
+    zoomLevel
+  );
   const { scrollContainerRef, pageRefs, scrollToPage } = useScroll(
     numPages,
     currentPage,
@@ -235,11 +237,26 @@ const PdfViewer: React.FC<PdfViewerProps> = ({ pdfUrl }) => {
                         pageRefs.current[index] = el;
                       }}
                       position="relative"
+                      sx={{
+                        width: getPageDimensions(index + 1).width,
+                        height: getPageDimensions(index + 1).height,
+                        overflow: "hidden",
+                      }}
                     >
-                      <Paper elevation={3}>
+                      <Paper
+                        elevation={3}
+                        sx={{
+                          width: "fit-content",
+                          height: "fit-content",
+                        }}
+                      >
                         <canvas
                           ref={(el) => {
                             canvasRefs.current[index] = el;
+                          }}
+                          style={{
+                            display: "block",
+                            transformOrigin: "top left",
                           }}
                         />
                       </Paper>
