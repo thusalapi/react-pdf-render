@@ -37,7 +37,7 @@ interface SignatureFieldData {
 
 const PdfViewer: React.FC<PdfViewerProps> = ({ pdfUrl }) => {
   const theme = useTheme();
-  const [zoomLevel, setZoomLevel] = useState<number>(1);
+  const [zoomLevel, setZoomLevel] = useState<number>(1.0);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [signatureFields, setSignatureFields] = useState<SignatureFieldData[]>(
     []
@@ -97,7 +97,7 @@ const PdfViewer: React.FC<PdfViewerProps> = ({ pdfUrl }) => {
   );
 
   const handleZoomIn = () => {
-    setZoomLevel((prevZoomLevel) => prevZoomLevel + 0.25);
+    setZoomLevel((prevZoomLevel) => Math.min(prevZoomLevel + 0.25, 2.0));
   };
 
   const handleZoomOut = () => {
