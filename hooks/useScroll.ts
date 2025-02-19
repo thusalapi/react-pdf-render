@@ -1,7 +1,6 @@
 import { useRef, useCallback, useEffect } from "react";
 
 export const useScroll = (
-  numPages: number | null,
   currentPage: number,
   setCurrentPage: (page: number) => void
 ) => {
@@ -13,10 +12,9 @@ export const useScroll = (
       const pageElement = pageRefs.current[pageNumber - 1];
       if (!pageElement) return;
       const scrollTop = pageElement.offsetTop;
-      scrollContainerRef.current.scrollTo({
-        top: scrollTop,
-        behavior: "smooth",
-      });
+      // scrollContainerRef.current.scrollTo({
+      //   top: scrollTop,
+      // });
     }
   }, []);
 
@@ -45,12 +43,7 @@ export const useScroll = (
   useEffect(() => {
     const container = scrollContainerRef.current;
     if (!container) return;
-    let isInitialLoad = true;
     const handleScroll = () => {
-      if (isInitialLoad) {
-        isInitialLoad = false;
-        return;
-      }
       updateCurrentPage();
     };
     container.addEventListener("scroll", handleScroll);

@@ -48,7 +48,6 @@ const PdfViewer: React.FC<PdfViewerProps> = ({ pdfUrl }) => {
   const { canvasRefs, renderAllPages, getPageDimensions, cleanup } =
     useRenderPages(pdfDocument, zoomLevel);
   const { scrollContainerRef, pageRefs, scrollToPage } = useScroll(
-    numPages,
     currentPage,
     setCurrentPage
   );
