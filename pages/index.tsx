@@ -13,7 +13,7 @@ const Home: React.FC = () => {
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", height: "100vh" }}>
-      <AppBar position="static" color="default" elevation={1}>
+      {/* <AppBar position="static" color="default" elevation={1}>
         <Toolbar>
           <IconButton edge="start" color="inherit">
             <Close />
@@ -22,7 +22,7 @@ const Home: React.FC = () => {
             Document Viewer
           </Typography>
         </Toolbar>
-      </AppBar>
+      </AppBar> */}
       <Box sx={{ flex: 1, overflow: "hidden" }}>
         {!pdfUrl ? (
           <Box sx={{ p: 3 }}>
