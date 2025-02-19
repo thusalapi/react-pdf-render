@@ -1,7 +1,7 @@
-/* eslint-disable */
 import React from "react";
 import { useDraggable } from "@dnd-kit/core";
 import { SignatureFieldProps } from "../types";
+import { Box, IconButton } from "@mui/material";
 
 const SignatureField: React.FC<SignatureFieldProps> = ({
   field,
@@ -37,29 +37,28 @@ const SignatureField: React.FC<SignatureFieldProps> = ({
   };
 
   return (
-    <div
+    <Box
       ref={setNodeRef}
-      style={style}
+      sx={style}
       {...listeners}
       {...attributes}
       onDragStart={(e) => onFieldDragStart(e, field)}
     >
       {field.fieldType === "signature" ? "Signature" : "Stamp"}
-      <button
-        style={{
+      <IconButton
+        sx={{
           position: "absolute",
-          top: "0",
-          right: "0",
+          top: 0,
+          right: 0,
           background: "red",
           color: "white",
           border: "none",
           cursor: "pointer",
+          padding: "4px",
         }}
         onClick={(e) => onDeleteField(e, field.id)}
-      >
-        X
-      </button>
-    </div>
+      ></IconButton>
+    </Box>
   );
 };
 

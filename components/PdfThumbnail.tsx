@@ -1,5 +1,38 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, Fragment } from "react";
+import { Box, Typography, Stack, Paper } from "@mui/material";
+import { styled } from "@mui/material/styles";
 import { PdfThumbnailProps } from "../types";
+
+const ThumbnailContainer = styled(Paper)(({ theme }) => ({
+  width: "199px",
+  height: "100vh",
+  borderRight: `1px solid ${theme.palette.divider}`,
+  display: "flex",
+  flexDirection: "column",
+  overflowY: "auto",
+  padding: "27px 32px",
+  backgroundColor: theme.palette.grey[100],
+}));
+
+const ThumbnailItem = styled(Paper, {
+  shouldForwardProp: (prop) => prop !== "active",
+})<{ active?: boolean }>(({ theme, active }) => ({
+  cursor: "pointer",
+  margin: theme.spacing(1),
+  padding: theme.spacing(1),
+  position: "relative",
+  transition: "transform 0.2s ease",
+  border: active ? `2px solid ${theme.palette.primary.main}` : "none",
+  "&:hover": {
+    transform: "scale(1.02)",
+  },
+}));
+
+const PageNumber = styled(Box)(({ theme }) => ({
+  marginTop: "6px",
+  textAlign: "center",
+  fontSize: 12,
+}));
 
 const PdfThumbnail: React.FC<PdfThumbnailProps> = ({
   pdfDocument,
@@ -34,50 +67,34 @@ const PdfThumbnail: React.FC<PdfThumbnailProps> = ({
   }, [pdfDocument]);
 
   return (
-    <aside style={{ width: "200px", borderRight: "1px solid #ccc" }}>
-      <h3>Pages</h3>
-      <ul>
+    <ThumbnailContainer elevation={0}>
+      <Stack spacing={7} sx={{ px: 1 }}>
         {pageThumbnails.map((thumbnail, index) => (
-          <li
-            key={index}
-            onClick={() => onThumbnailClick(index + 1)}
-            style={{
-              cursor: "pointer",
-              backgroundColor: currentPage === index + 1 ? "#f0f0f0" : "white",
-              padding: "5px",
-              borderBottom: "1px solid #eee",
-              position: "relative",
-              transition: "background-color 0.2s ease",
-            }}
-          >
-            <img
-              src={thumbnail}
-              alt={`Page ${index + 1}`}
-              style={{
-                width: "100%",
-                border:
-                  currentPage === index + 1
-                    ? "2px solid #000"
-                    : "1px solid #ddd",
-              }}
-            />
-            <div
-              style={{
-                position: "absolute",
-                bottom: "5px",
-                left: "5px",
-                backgroundColor: "rgba(255, 255, 255, 0.7)",
-                padding: "2px 5px",
-                borderRadius: "3px",
-                fontSize: "12px",
-              }}
+          <Fragment key={index}>
+            <ThumbnailItem
+              active={currentPage === index + 1}
+              elevation={currentPage === index + 1 ? 2 : 0}
+              onClick={() => onThumbnailClick(index + 1)}
             >
-              Page {index + 1}
-            </div>
-          </li>
+              <Box sx={{ position: "relative" }}>
+                <img
+                  src={thumbnail}
+                  alt={`Page ${index + 1}`}
+                  style={{
+                    width: "100%",
+                    display: "block",
+                    borderRadius: 4,
+                  }}
+                />
+              </Box>
+            </ThumbnailItem>
+            <PageNumber>
+              <Typography variant="caption">{index + 1}</Typography>
+            </PageNumber>
+          </Fragment>
         ))}
-      </ul>
-    </aside>
+      </Stack>
+    </ThumbnailContainer>
   );
 };
 
