@@ -89,7 +89,6 @@ const PdfViewer: React.FC<PdfViewerProps> = ({ pdfUrl }) => {
         const scrollTop = pageElement.offsetTop;
         scrollContainerRef.current.scrollTo({
           top: scrollTop,
-          behavior: "smooth",
         });
       }
     },
@@ -338,7 +337,7 @@ const PdfViewer: React.FC<PdfViewerProps> = ({ pdfUrl }) => {
       <Box
         sx={{
           backgroundColor: "red",
-          width: "400px",
+          width: "30%",
         }}
       >
         <Box>jjj</Box>
