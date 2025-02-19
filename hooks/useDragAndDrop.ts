@@ -5,7 +5,7 @@ import * as pdfjsLib from "pdfjs-dist";
 
 export const useDragAndDrop = (
   pdfDocument: pdfjsLib.PDFDocumentProxy | null,
-  zoomLevel: number,
+  scale: number,
   setSignatureFields: React.Dispatch<
     React.SetStateAction<SignatureFieldData[]>
   >,
@@ -24,18 +24,16 @@ export const useDragAndDrop = (
 
   const getPageFromY = (
     clientY: number
-  ): { page: number; pageTop: number } | null => {
+  ): { page: number; pageElement: HTMLElement } | null => {
     if (!scrollContainerRef.current) return null;
-    const containerRect = scrollContainerRef.current.getBoundingClientRect();
-    const scrollTop = scrollContainerRef.current.scrollTop;
-    const mouseY = clientY - containerRect.top + scrollTop;
+
     for (let i = 0; i < pageRefs.current.length; i++) {
       const pageElement = pageRefs.current[i];
       if (!pageElement) continue;
-      const pageRect = pageElement.getBoundingClientRect();
-      const pageTop = pageElement.offsetTop;
-      if (mouseY >= pageTop && mouseY <= pageTop + pageRect.height) {
-        return { page: i + 1, pageTop: pageTop };
+
+      const rect = pageElement.getBoundingClientRect();
+      if (clientY >= rect.top && clientY <= rect.bottom) {
+        return { page: i + 1, pageElement };
       }
     }
     return null;
@@ -43,61 +41,64 @@ export const useDragAndDrop = (
 
   const handleDrop = async (e: React.DragEvent) => {
     e.preventDefault();
+
     const pageInfo = getPageFromY(e.clientY);
-    if (!pageInfo || !scrollContainerRef.current || !pdfDocument) return;
-    const { page, pageTop } = pageInfo;
-    const containerRect = scrollContainerRef.current.getBoundingClientRect();
-    const scrollTop = scrollContainerRef.current.scrollTop;
+    if (!pageInfo || !pdfDocument) return;
+
+    const { page, pageElement } = pageInfo;
+    const canvas = pageElement.querySelector("canvas");
+    if (!canvas) return;
+
+    // Get canvas and its bounds
+    const canvasRect = canvas.getBoundingClientRect();
+
+    // Get PDF page and its viewport
     const pdfPage = await pdfDocument.getPage(page);
-    const viewport = pdfPage.getViewport({ scale: zoomLevel });
-    const pageHeight = viewport.height / zoomLevel;
+    const viewport = pdfPage.getViewport({ scale: 1.0 }); // Get base viewport
+
+    // Calculate position in PDF coordinates
     const fieldWidth = 100;
     const fieldHeight = 30;
-    const relativeX =
-      (e.clientX - containerRect.left) / zoomLevel - fieldWidth / 2;
-    const relativeY =
-      (e.clientY - containerRect.top + scrollTop - pageTop) / zoomLevel -
-      fieldHeight / 2;
-    const adjustedPosition = getAdjustedPageAndPosition(
-      relativeY,
-      page,
-      pageHeight,
-      fieldHeight,
-      pdfDocument.numPages
-    );
+
+    // Convert screen coordinates to PDF coordinates
+    const pdfX = (e.clientX - canvasRect.left) / scale - fieldWidth / 2;
+    const pdfY = (e.clientY - canvasRect.top) / scale - fieldHeight / 2;
+
+    // Ensure coordinates stay within page bounds
+    const boundedX = Math.max(0, Math.min(pdfX, viewport.width - fieldWidth));
+    const boundedY = Math.max(0, Math.min(pdfY, viewport.height - fieldHeight));
+
     if (draggedField.isExisting && draggedField.fieldId !== null) {
+      // Update existing field
       setSignatureFields((prevFields) =>
         prevFields.map((field) =>
           field.id === draggedField.fieldId
             ? {
                 ...field,
-                page: adjustedPosition.page,
-                x: Math.max(
-                  0,
-                  Math.min(relativeX, viewport.width / zoomLevel - fieldWidth)
-                ),
-                y: adjustedPosition.y,
+                page,
+                x: boundedX,
+                y: boundedY,
               }
             : field
         )
       );
     } else if (draggedField.fieldType) {
+      // Create new field
       const newSignatureField: SignatureFieldData = {
         id: signatureIdCounter,
-        page: adjustedPosition.page,
-        x: Math.max(
-          0,
-          Math.min(relativeX, viewport.width / zoomLevel - fieldWidth)
-        ),
-        y: adjustedPosition.y,
+        page,
+        x: boundedX,
+        y: boundedY,
         width: fieldWidth,
         height: fieldHeight,
         fieldType: draggedField.fieldType,
         fieldStatus: "pending",
       };
+
       setSignatureFields((prevFields) => [...prevFields, newSignatureField]);
       setSignatureIdCounter((prev) => prev + 1);
     }
+
     setDraggedField({ fieldId: null, isExisting: false, fieldType: null });
   };
 
@@ -111,12 +112,15 @@ export const useDragAndDrop = (
       isExisting: true,
       fieldType: field.fieldType,
     });
+
+    // Create drag ghost
     const ghostDiv = document.createElement("div");
-    ghostDiv.style.width = "100px";
-    ghostDiv.style.height = "30px";
-    ghostDiv.style.backgroundColor = "rgba(0, 0, 255, 0.2)";
+    ghostDiv.style.width = `${field.width}px`;
+    ghostDiv.style.height = `${field.height}px`;
+    ghostDiv.style.backgroundColor = "rgba(25, 118, 210, 0.2)";
+    ghostDiv.style.border = "1px solid #1976d2";
     document.body.appendChild(ghostDiv);
-    e.dataTransfer.setDragImage(ghostDiv, 50, 15);
+    e.dataTransfer.setDragImage(ghostDiv, field.width / 2, field.height / 2);
     setTimeout(() => document.body.removeChild(ghostDiv), 0);
   };
 
