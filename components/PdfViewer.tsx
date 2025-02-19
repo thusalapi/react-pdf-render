@@ -3,7 +3,6 @@ import PdfThumbnail from "./PdfThumbnail";
 import TopBar from "./TopBar";
 import {
   Box,
-  Button,
   IconButton,
   Paper,
   Stack,
@@ -174,7 +173,7 @@ const PdfViewer: React.FC<PdfViewerProps> = ({ pdfUrl }) => {
                 onDragOver={handleDragOver}
                 onDrop={handleDrop}
                 sx={{
-                  height: "80vh",
+                  height: "90vh",
                   overflowY: "scroll",
                   overflowX: "auto",
                   position: "relative",
@@ -275,14 +274,14 @@ const PdfViewer: React.FC<PdfViewerProps> = ({ pdfUrl }) => {
                 </Stack>
               </Box>
             </Box>
-            <Button
+            {/* <Button
               variant="contained"
               startIcon={<SaveIcon />}
               onClick={handleSave}
               fullWidth
             >
               Save
-            </Button>
+            </Button> */}
           </Stack>
         </Box>
         <Box

@@ -1,37 +1,49 @@
-import React, { useEffect, useState, Fragment } from "react";
+import React, { useEffect, useState } from "react";
 import { Box, Typography, Stack, Paper } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import { PdfThumbnailProps } from "../types";
 
 const ThumbnailContainer = styled(Paper)(({ theme }) => ({
   width: "200px",
-  height: "100vh",
+  height: "90dvh",
+  padding: "27px",
   borderRight: `1px solid ${theme.palette.divider}`,
   display: "flex",
   flexDirection: "column",
   overflowY: "auto",
-  padding: "27px 32px",
-  backgroundColor: theme.palette.grey[100],
+  backgroundColor: theme.palette.grey[200],
+  "&::-webkit-scrollbar": {
+    width: "13px",
+  },
+  "&::-webkit-scrollbar-thumb": {
+    backgroundColor: theme.palette.grey[300],
+    borderRadius: "3px",
+  },
 }));
 
 const ThumbnailItem = styled(Paper, {
   shouldForwardProp: (prop) => prop !== "active",
 })<{ active?: boolean }>(({ theme, active }) => ({
   cursor: "pointer",
-  margin: theme.spacing(1),
-  padding: theme.spacing(1),
   position: "relative",
-  transition: "transform 0.2s ease",
-  border: active ? `2px solid ${theme.palette.primary.main}` : "none",
+  margin: "4px 8px",
+  transition: "all 0.2s ease",
+  border: active
+    ? `2px solid ${theme.palette.primary.main}`
+    : "1px solid #e0e0e0",
+  backgroundColor: theme.palette.background.paper,
   "&:hover": {
-    transform: "scale(1.02)",
+    borderColor: theme.palette.primary.light,
   },
 }));
 
-const PageNumber = styled(Box)(({ theme }) => ({
-  marginTop: "6px",
-  textAlign: "center",
-  fontSize: 12,
+const PageNumber = styled(Typography)(({ theme }) => ({
+  position: "absolute",
+  bottom: "-20px",
+  left: "50%",
+  transform: "translateX(-50%)",
+  fontSize: "12px",
+  color: theme.palette.text.secondary,
 }));
 
 const PdfThumbnail: React.FC<PdfThumbnailProps> = ({
@@ -48,7 +60,7 @@ const PdfThumbnail: React.FC<PdfThumbnailProps> = ({
       const thumbnails: string[] = [];
       for (let i = 1; i <= pdfDocument.numPages; i++) {
         const page = await pdfDocument.getPage(i);
-        const viewport = page.getViewport({ scale: 0.2 });
+        const viewport = page.getViewport({ scale: 0.15 });
         const canvas = document.createElement("canvas");
         const context = canvas.getContext("2d");
         canvas.height = viewport.height;
@@ -68,30 +80,27 @@ const PdfThumbnail: React.FC<PdfThumbnailProps> = ({
 
   return (
     <ThumbnailContainer elevation={0}>
-      <Stack spacing={7} sx={{ px: 1 }}>
+      <Stack spacing={4} sx={{ py: 2 }}>
         {pageThumbnails.map((thumbnail, index) => (
-          <Fragment key={index}>
+          <Box key={index} sx={{ position: "relative", mb: 2 }}>
             <ThumbnailItem
               active={currentPage === index + 1}
-              elevation={currentPage === index + 1 ? 2 : 0}
+              elevation={0}
               onClick={() => onThumbnailClick(index + 1)}
             >
-              <Box sx={{ position: "relative" }}>
+              <Box sx={{ p: 1 }}>
                 <img
                   src={thumbnail}
                   alt={`Page ${index + 1}`}
                   style={{
                     width: "100%",
                     display: "block",
-                    borderRadius: 4,
                   }}
                 />
               </Box>
             </ThumbnailItem>
-            <PageNumber>
-              <Typography variant="caption">{index + 1}</Typography>
-            </PageNumber>
-          </Fragment>
+            <PageNumber variant="caption">{index + 1}</PageNumber>
+          </Box>
         ))}
       </Stack>
     </ThumbnailContainer>

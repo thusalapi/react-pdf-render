@@ -25,10 +25,11 @@ const TopBar: React.FC<TopBarProps> = ({
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
-        bgcolor: "background.paper",
+        bgcolor: "#FAFAFA",
         p: 1,
-        borderBottom: "1px solid",
-        borderColor: "divider",
+        border: "1px solid #E4E4E7",
+        marginBottom: "16px",
+        borderRadius: "12px",
       }}
     >
       <IconButton onClick={onToggleThumbnails}>
