@@ -4,7 +4,7 @@ import { styled } from "@mui/material/styles";
 import { PdfThumbnailProps } from "../types";
 
 const ThumbnailContainer = styled(Paper)(({ theme }) => ({
-  width: "199px",
+  width: "200px",
   height: "100vh",
   borderRight: `1px solid ${theme.palette.divider}`,
   display: "flex",

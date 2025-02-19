@@ -3,87 +3,108 @@ import * as pdfjsLib from "pdfjs-dist";
 
 export const useRenderPages = (
   pdfDocument: pdfjsLib.PDFDocumentProxy | null,
-  zoomLevel: number
+  scale: number
 ) => {
   const canvasRefs = useRef<(HTMLCanvasElement | null)[]>([]);
   const renderingTasks = useRef<(pdfjsLib.RenderTask | null)[]>([]);
-  const [baseViewports, setBaseViewports] = useState<pdfjsLib.PageViewport[]>(
+  const [pageViewports, setPageViewports] = useState<pdfjsLib.PageViewport[]>(
     []
   );
 
-  const renderPage = async (pageNumber: number, scale: number) => {
+  const renderPage = async (pageNumber: number) => {
     if (!pdfDocument || !canvasRefs.current[pageNumber - 1]) return;
 
     try {
       const page = await pdfDocument.getPage(pageNumber);
-
-      // Create base viewport if not exists
-      if (!baseViewports[pageNumber - 1]) {
-        const baseViewport = page.getViewport({ scale: 1.0 });
-        setBaseViewports((prev) => {
-          const newViewports = [...prev];
-          newViewports[pageNumber - 1] = baseViewport;
-          return newViewports;
-        });
-      }
-
-      const viewport = page.getViewport({ scale: 1.0 }); // Always use base scale
       const canvas = canvasRefs.current[pageNumber - 1];
       const context = canvas?.getContext("2d");
 
-      if (canvas) {
-        // Set canvas to base dimensions
-        const outputScale = window.devicePixelRatio || 1;
-        canvas.width = Math.floor(viewport.width * outputScale);
-        canvas.height = Math.floor(viewport.height * outputScale);
+      if (!canvas || !context) return;
 
-        // Apply zoom through CSS transform
-        canvas.style.width = `${viewport.width}px`;
-        canvas.style.height = `${viewport.height}px`;
-        canvas.style.transform = `scale(${scale})`;
-        canvas.style.transformOrigin = "top left";
-
-        context?.scale(outputScale, outputScale);
+      // Cancel any ongoing rendering for this page
+      if (renderingTasks.current[pageNumber - 1]) {
+        renderingTasks.current[pageNumber - 1]!.cancel();
       }
 
-      if (context) {
-        if (renderingTasks.current[pageNumber - 1]) {
-          renderingTasks.current[pageNumber - 1]!.cancel();
-        }
+      // Calculate viewport with current scale
+      const viewport = page.getViewport({ scale });
 
-        const renderTask = page.render({
-          canvasContext: context,
-          viewport: viewport,
-        });
+      // Store viewport for dimension calculations
+      setPageViewports((prev) => {
+        const newViewports = [...prev];
+        newViewports[pageNumber - 1] = viewport;
+        return newViewports;
+      });
 
-        renderingTasks.current[pageNumber - 1] = renderTask;
-        await renderTask.promise;
-      }
+      // Handle high DPI displays
+      const outputScale = window.devicePixelRatio || 1;
+
+      // Set physical canvas size for high DPI
+      canvas.width = Math.floor(viewport.width * outputScale);
+      canvas.height = Math.floor(viewport.height * outputScale);
+
+      // Set display size
+      canvas.style.width = `${viewport.width}px`;
+      canvas.style.height = `${viewport.height}px`;
+
+      // Set up rendering context
+      const transform =
+        outputScale !== 1 ? [outputScale, 0, 0, outputScale, 0, 0] : undefined;
+
+      const renderContext = {
+        canvasContext: context,
+        viewport: viewport,
+        transform: transform,
+      };
+
+      // Start rendering
+      const renderTask = page.render(renderContext);
+      renderingTasks.current[pageNumber - 1] = renderTask;
+
+      await renderTask.promise;
     } catch (error) {
       if (
         error instanceof Error &&
         error.name !== "RenderingCancelledException"
       ) {
-        console.error("Error rendering page:", error);
+        console.error(`Error rendering page ${pageNumber}:`, error);
       }
     }
   };
 
   const renderAllPages = useCallback(async () => {
     if (!pdfDocument) return;
-    for (let i = 1; i <= pdfDocument.numPages; i++) {
-      await renderPage(i, zoomLevel);
-    }
-  }, [pdfDocument, zoomLevel]);
 
-  const getPageDimensions = (pageNumber: number) => {
-    const viewport = baseViewports[pageNumber - 1];
-    if (!viewport) return { width: 0, height: 0 };
-    return {
-      width: viewport.width,
-      height: viewport.height,
-    };
+    const promises = Array.from({ length: pdfDocument.numPages }, (_, i) =>
+      renderPage(i + 1)
+    );
+
+    await Promise.all(promises);
+  }, [pdfDocument, scale]);
+
+  const getPageDimensions = useCallback(
+    (pageNumber: number) => {
+      const viewport = pageViewports[pageNumber - 1];
+      if (!viewport) return { width: 0, height: 0 };
+
+      return {
+        width: viewport.width,
+        height: viewport.height,
+      };
+    },
+    [pageViewports]
+  );
+
+  // Cleanup function to cancel rendering tasks
+  const cleanup = useCallback(() => {
+    renderingTasks.current.forEach((task) => task?.cancel());
+    renderingTasks.current = [];
+  }, []);
+
+  return {
+    canvasRefs,
+    renderAllPages,
+    getPageDimensions,
+    cleanup,
   };
-
-  return { canvasRefs, renderAllPages, getPageDimensions };
 };
